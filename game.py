@@ -11,6 +11,14 @@ import threading
 import pytchat
 import json
 from settings import *
+
+# Import modularized components
+from ui_elements import TextBox, Slider, Button
+from flag_handler import FlagManager
+from physics_core import rebuild_circle_segments, create_circle_body, limit_velocity, spawn_flag
+from chat_handler import find_country_code, chat_listener_task
+from ui_panels import draw_leaderboard_panel, draw_leaderboard_entry, draw_next_flags_panel
+from game_state import *
 #exe
 import sys
 import os
@@ -67,6 +75,16 @@ screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Flag Battle Royale - Live Edition")
 pygame.scrap.init() 
 
+# --- 1. Ekran oluştuktan SONRA bayrakları yükle ---
+global flag_manager
+flag_manager = FlagManager(FLAGS_FOLDER)
+
+# --- 2. Diğer modüllere bayrak yöneticisini manuel enjekte et ---
+import physics_core
+physics_core.flag_manager = flag_manager
+
+import ui_panels
+ui_panels.flag_manager = flag_manager
 # --- ARKA PLAN RESMİ YÜKLEME (DEBUG MODU) ---
 # background_surface = None
 # try:
@@ -163,63 +181,19 @@ font_big = pygame.font.SysFont("Arial", 60, bold=True)
 font_leaderboard = pygame.font.SysFont("Arial", 14, bold=True)
 
 # --- GLOBAL DEĞİŞKENLER ---
-LEADERBOARD = {}
-NEXT_ROUND_QUEUE = {} 
+
 CHAT_THREAD = None
-IS_CHAT_RUNNING = False
 VIDEO_ID_INPUT = "YT Live Video ID" 
 
 is_round_recorded = False
 
 # --- YARDIMCI: Ülke Bulma ---
-def find_country_code(text):
-    if len(text) < 3: return None  # 3 harften kısaysa aramayı iptal et
-    text = text.strip().title()
-    try:
-        return pycountry.countries.lookup(text).alpha_2
-    except:
-        try:
-            res = pycountry.countries.search_fuzzy(text)
-            if res: return res[0].alpha_2
-        except:
-            return None
+# --- CHAT ve COUNTRY CODE FUNCTIONS TAŞINDI (chat_handler.py'ye) ---
 
-# --- THREAD: SOHBET DİNLEYİCİ ---
-def chat_listener_task(chat_obj):
-    global NEXT_ROUND_QUEUE, IS_CHAT_RUNNING
-    print("Chat thread basladi...")
-    IS_CHAT_RUNNING = True
-    
-    try:
-        while IS_CHAT_RUNNING and chat_obj.is_alive():
-            for c in chat_obj.get().sync_items():
-                msg = c.message
-                code = find_country_code(msg)
-                if code:
-                    try:
-                        std_name = pycountry.countries.get(alpha_2=code).name
-                    except:
-                        std_name = msg
-                    
-                    if std_name in NEXT_ROUND_QUEUE:
-                        NEXT_ROUND_QUEUE[std_name]["count"] += 1
-                    else:
-                        NEXT_ROUND_QUEUE[std_name] = {"code": code, "count": 1}
-                    
-                    print(f"Sıraya eklendi: {std_name} (x{NEXT_ROUND_QUEUE[std_name]['count']})")
-            
-            time.sleep(0.5) 
-    except Exception as e:
-        print(f"Chat thread hatasi: {e}")
-    finally:
-        IS_CHAT_RUNNING = False
-        print("Chat thread sonlandi.")
+# --- UI SINIFLARI TAŞINDI (ui_elements.py'ye) ---
 
-# --- UI SINIFLARI ---
-
-# --- TEXTBOX ---
-class TextBox:
-    def __init__(self, x, y, w, h, text=""):
+# --- TEXTBOX TAŞINDI (ui_elements.py'ye) ---
+def __init__(self, x, y, w, h, text=""):
         self.rect = pygame.Rect(x, y, w, h)
         self.text = text
         self.active = False
@@ -228,7 +202,7 @@ class TextBox:
         self.color = self.color_inactive
         self.select_all = False 
 
-    def handle_event(self, event):
+def handle_event(self, event):
         if event.type == pygame.MOUSEBUTTONDOWN:
             if self.rect.collidepoint(event.pos):
                 self.active = not self.active
@@ -286,7 +260,7 @@ class TextBox:
                         else:
                             self.text += event.unicode
 
-    def draw(self, screen):
+def draw(self, screen):
         pygame.draw.rect(screen, (30, 30, 30), self.rect)
         
         if self.select_all and self.active:
@@ -299,164 +273,14 @@ class TextBox:
         
         pygame.draw.rect(screen, self.color, self.rect, 2)
 
-class Slider:
-    def __init__(self, x, y, w, h, min_val, max_val, initial_val, text):
-        self.rect = pygame.Rect(x, y, w, h)
-        self.min_val = min_val
-        self.max_val = max_val
-        self.val = initial_val
-        self.text = text
-        self.dragging = False
+# Slider class taşındı ui_elements.py'ye
+# Button class taşındı ui_elements.py'ye
 
-    def handle_event(self, event):
-        if event.type == pygame.MOUSEBUTTONDOWN:
-            if self.rect.collidepoint(event.pos):
-                self.dragging = True
-        elif event.type == pygame.MOUSEBUTTONUP:
-            self.dragging = False
-        elif event.type == pygame.MOUSEMOTION:
-            if self.dragging:
-                mouse_x = event.pos[0]
-                ratio = (mouse_x - self.rect.x) / self.rect.width
-                ratio = max(0, min(1, ratio))
-                self.val = self.min_val + (self.max_val - self.min_val) * ratio
+# --- FLAG MANAGER TAŞINDI (flag_handler.py'ye) ---
 
-    def draw(self, screen):
-        val_str = f"{int(self.val)}"
-        if "Donme" in self.text: val_str = f"{self.val:.1f}"
-        
-        label = font_ui.render(f"{self.text}: {val_str}", True, COLOR_TEXT)
-        screen.blit(label, (self.rect.x, self.rect.y - 20))
-        pygame.draw.rect(screen, (100, 100, 100), self.rect, border_radius=5)
-        ratio = (self.val - self.min_val) / (self.max_val - self.min_val)
-        handle_x = self.rect.x + (self.rect.width * ratio)
-        handle_rect = pygame.Rect(handle_x - 10, self.rect.y - 5, 20, self.rect.height + 10)
-        pygame.draw.rect(screen, COLOR_ACCENT, handle_rect, border_radius=5)
+# --- FİZİK FONKSIYONLARI TAŞINDI (physics_core.py'ye) ---
 
-class Button:
-    def __init__(self, x, y, w, h, text, callback):
-        self.rect = pygame.Rect(x, y, w, h)
-        self.text = text
-        self.callback = callback
-
-    def handle_event(self, event):
-        if event.type == pygame.MOUSEBUTTONDOWN:
-            if self.rect.collidepoint(event.pos):
-                self.callback()
-
-    def draw(self, screen):
-        pygame.draw.rect(screen, COLOR_ACCENT, self.rect, border_radius=8)
-        label = font_ui.render(self.text, True, (0, 0, 0))
-        text_rect = label.get_rect(center=self.rect.center)
-        screen.blit(label, text_rect)
-
-# --- FLAG MANAGER ---
-class FlagManager:
-    def __init__(self, folder_path):
-        # self.folder_path = folder_path
-        self.folder_path = resource_path(folder_path)   #exe
-        self.flags_data = [] 
-        self.load_flags()
-
-    def load_flags(self):
-        if not os.path.exists(self.folder_path):
-            os.makedirs(self.folder_path)
-            return
-        for filename in os.listdir(self.folder_path):
-            if filename.endswith(".png") or filename.endswith(".jpg"):
-                country_code = filename.split(".")[0].upper()
-                try:
-                    country = pycountry.countries.get(alpha_2=country_code)
-                    full_name = country.name if country else country_code
-                except:
-                    full_name = country_code 
-                try:
-                    path = os.path.join(self.folder_path, filename)
-                    img = pygame.image.load(path).convert_alpha()
-                    self.flags_data.append({"raw_img": img, "name": full_name, "code": country_code})
-                except Exception as e:
-                    print(f"Hata: {filename} {e}")
-
-    def get_flag_by_code(self, code, target_w, target_h):
-        code = code.upper()
-        for data in self.flags_data:
-            if data["code"] == code:
-                scaled = pygame.transform.scale(data["raw_img"], (int(target_w), int(target_h)))
-                return {"image": scaled, "name": data["name"], "original": data["raw_img"]}
-        return self.get_random_flag(target_w, target_h)
-
-    def get_random_flag(self, target_w, target_h):
-        if not self.flags_data:
-            fallback = pygame.Surface((int(target_w), int(target_h)))
-            fallback.fill((200, 200, 200))
-            return {"image": fallback, "name": "No Flag"}
-        data = random.choice(self.flags_data)
-        scaled = pygame.transform.scale(data["raw_img"], (int(target_w), int(target_h)))
-        return {"image": scaled, "name": data["name"], "original": data["raw_img"]}
-
-flag_manager = FlagManager(FLAGS_FOLDER)
-
-# --- FİZİK ---
-def rebuild_circle_segments(space, body, radius, gap_angle_deg):
-    for shape in list(space.shapes):
-        if shape.body == body and isinstance(shape, pymunk.Segment):
-            space.remove(shape)
-    
-    res = 120
-    gap_start = -gap_angle_deg / 2
-    gap_end = gap_angle_deg / 2
-    
-    for i in range(res):
-        angle_start = (i / res) * 360
-        angle_end = ((i + 1) / res) * 360
-        if gap_start <= (angle_start - 50) <= gap_end:
-            continue
-        as_rad = math.radians(angle_start)
-        ae_rad = math.radians(angle_end)
-        p1 = (radius * math.cos(as_rad), radius * math.sin(as_rad))
-        p2 = (radius * math.cos(ae_rad), radius * math.sin(ae_rad))
-        
-        segment = pymunk.Segment(body, p1, p2, INTERNAL_SETTINGS["wall_thickness"])
-        segment.elasticity = INTERNAL_SETTINGS["elasticity"]
-        segment.friction = 0.5 
-        segment.color = (0, 255, 0, 255) 
-        space.add(segment)
-
-def create_circle_body(space, pos, rotation_speed):
-    body = pymunk.Body(body_type=pymunk.Body.KINEMATIC)
-    body.position = pos
-    body.angular_velocity = rotation_speed
-    space.add(body)
-    return body
-
-def limit_velocity(body, gravity, damping, dt):
-    pymunk.Body.update_velocity(body, gravity, damping, dt)
-    l = body.velocity.length
-    if l > MAX_VELOCITY:
-        scale = MAX_VELOCITY / l
-        body.velocity = body.velocity * scale
-
-def spawn_flag(space, pos, radius, specific_data=None):
-    mass = 10 
-    moment = pymunk.moment_for_circle(mass, 0, radius)
-    body = pymunk.Body(mass, moment)
-    body.position = pos
-    body.velocity_func = limit_velocity
-    
-    shape = pymunk.Circle(body, radius)
-    shape.elasticity = INTERNAL_SETTINGS["elasticity"]
-    shape.friction = 0.5 
-    
-    w = radius * 2.2
-    h = radius * 1.5
-    
-    if specific_data:
-        shape.custom_data = specific_data
-    else:
-        shape.custom_data = flag_manager.get_random_flag(w, h)
-        
-    space.add(body, shape)
-    return shape
+# Physics functions moved to physics_core.py
 
 def draw_smooth_segment(screen, p1, p2, thickness, color):
     dx = p2[0] - p1[0]
@@ -475,417 +299,12 @@ def draw_smooth_segment(screen, p1, p2, thickness, color):
     pygame.gfxdraw.filled_polygon(screen, corners, color)
     pygame.gfxdraw.aapolygon(screen, corners, color)
 
-# --- ARAYÜZ FONKSİYONLARI ---
-def draw_leaderboard_panel(screen):
-    if not LEADERBOARD:
-        return
-    #tutulacak top winners sayısı 15
-    sorted_winners = sorted(LEADERBOARD.items(), key=lambda item: item[1], reverse=True)[:15]
-    total_items = len(sorted_winners)
-
-    MAX_VISIBLE = 10
-    ROW_HEIGHT = 20 #32 idi
-    HEADER_H = 45
-    panel_w = 300
-    panel_h = HEADER_H + (MAX_VISIBLE * ROW_HEIGHT)
-
-    # --- Liderlik Panel Konumu ---
-    circle_center_x = CIRCLE_CENTER[0]
-    circle_center_y = CIRCLE_CENTER[1]
-    circle_radius = INTERNAL_SETTINGS["circle_radius"]
-    # panel_x = circle_center_x + circle_radius + 30
-    # panel_y = circle_center_y - (panel_h // 2)
-
-    panel_x = (WIDTH - panel_w) // 2   # yatayda ortala
-    panel_y = 90                       # üstten 60px boşluk
-
-    if panel_x + panel_w > WIDTH - 20:
-        panel_x = WIDTH - panel_w - 20
-        
-
-    # --- Hafif yukarı-aşağı salınım ---
-    time_ms = pygame.time.get_ticks()
-    #dikey eksen
-    # float_offset = int(6 * math.sin(time_ms * 0.002))
-    # panel_y += float_offset
-
-    #yatay eksen
-    h_offset = int(6 * math.sin(time_ms * 0.002))
-    panel_x += h_offset
-
-    # --- Gölge + arkaplan ---
-    shadow_offset = 5
-    s_shadow = pygame.Surface((panel_w, panel_h))
-    s_shadow.set_alpha(100)
-    s_shadow.fill((0, 0, 0))
-    screen.blit(s_shadow, (panel_x + shadow_offset, panel_y + shadow_offset))
-
-    s = pygame.Surface((panel_w, panel_h))
-    s.set_alpha(200)
-    s.fill((12, 12, 24))
-    screen.blit(s, (panel_x, panel_y))
-
-    # --- Başlık (sabit) ---
-    # --- Başlık (sabit) ---
-    try:
-        # Varsa global emoji fontunu kullan (Emoji görünsün diye)
-        title = emoji_font.render("👑 TOP WINNERS", True, (255, 220, 40))
-    except:
-        # Yoksa Arial kullan (Kare görünür ama hata vermez)
-        title_font = pygame.font.SysFont("Arial", 22, bold=True)
-        title = title_font.render("TOP WINNERS", True, (255, 220, 40)) # Emojiyi sildik burdan
-        
-    screen.blit(title, (panel_x + 15, panel_y + 8))
-
-    # --- Eğer 10 veya daha az ülke varsa: sabit liste (kaydırma yok) ---
-    if total_items <= MAX_VISIBLE:
-        start_y = panel_y + HEADER_H
-        for i, (country, wins) in enumerate(sorted_winners):
-            y_pos = start_y + i * ROW_HEIGHT
-            draw_leaderboard_entry(screen, i, country, wins, panel_x + 15, y_pos)
-        return
-
-    # --- 10'dan fazla ülke: ÇİFT YÖNLÜ YUMUŞAK KAYDIRMA + BEKLEME ---
-    total_scroll = (total_items - MAX_VISIBLE) * ROW_HEIGHT
-
-    # Kalıcı değişkenler
-    if not hasattr(draw_leaderboard_panel, "scroll_offset"):
-        draw_leaderboard_panel.scroll_offset = 0.0
-        draw_leaderboard_panel.direction = 1
-        draw_leaderboard_panel.pause_timer = 0
-        draw_leaderboard_panel.last_tick = pygame.time.get_ticks()
-
-    current_tick = pygame.time.get_ticks()
-    dt = (current_tick - draw_leaderboard_panel.last_tick) / 1000.0
-    draw_leaderboard_panel.last_tick = current_tick
-
-    SCROLL_SPEED = 40
-
-    if draw_leaderboard_panel.pause_timer > 0:
-        draw_leaderboard_panel.pause_timer -= dt * 1000
-        if draw_leaderboard_panel.pause_timer <= 0:
-            draw_leaderboard_panel.pause_timer = 0
-            draw_leaderboard_panel.direction *= -1
-    else:
-        draw_leaderboard_panel.scroll_offset += draw_leaderboard_panel.direction * SCROLL_SPEED * dt
-
-        if draw_leaderboard_panel.scroll_offset >= total_scroll and draw_leaderboard_panel.direction == 1:
-            draw_leaderboard_panel.scroll_offset = total_scroll
-            draw_leaderboard_panel.pause_timer = 3000
-        elif draw_leaderboard_panel.scroll_offset <= 0 and draw_leaderboard_panel.direction == -1:
-            draw_leaderboard_panel.scroll_offset = 0
-            draw_leaderboard_panel.pause_timer = 3000
-
-        draw_leaderboard_panel.scroll_offset = max(0.0, min(draw_leaderboard_panel.scroll_offset, total_scroll))
-
-    # --- Görünür alan (liste satırlarının çizileceği bölge) ---
-    view_y_start = panel_y + HEADER_H
-    view_y_end = panel_y + panel_h
-
-    # --- ÖNEMLİ: ÇİZİM ALANINI KISITLA (taşmaları engelle) ---
-    # Tüm panelin içinde, sadece satırların olması gereken yeri kes
-    entry_clip_rect = pygame.Rect(
-        panel_x,                # X başlangıcı (tüm panel genişliği)
-        view_y_start,          # Y başlangıcı (başlığın hemen altı)
-        panel_w,              # genişlik
-        panel_h - HEADER_H    # yükseklik (başlık hariç)
-    )
-    # Hafif iç boşluk ekle (yazıların tam kenarda kesilmesini önler)
-    entry_clip_rect.inflate_ip(0, -4)  # dikeyde 2px üst, 2px alt boşluk
-
-    old_clip = screen.get_clip()
-    screen.set_clip(entry_clip_rect)
-
-    # --- Satırları çiz (sadece görünür alana yakın olanları) ---
-    for i, (country, wins) in enumerate(sorted_winners):
-        y = view_y_start + (i * ROW_HEIGHT) - draw_leaderboard_panel.scroll_offset
-
-        # Sadece kesme bölgesinin biraz dışına taşanları da çiz (kesme işlemi zaten yapacak)
-        if view_y_start - ROW_HEIGHT < y < view_y_end:
-            draw_leaderboard_entry(screen, i, country, wins, panel_x + 15, y)
-
-    # --- Kesme bölgesini eski haline döndür ---
-    screen.set_clip(old_clip)
-
-def draw_leaderboard_entry(screen, rank, country, wins, x, y):
-    """Verilen sıradaki ülke bilgisini ekrana çizer."""
-    if rank == 0:
-        medal = "🥇.  "
-        color = (255, 200, 50)      # altın
-    elif rank == 1:
-        medal = "🥈.  "
-        color = (22, 164, 224)     # baska
-    elif rank == 2:
-        medal = "🥉.  "
-        color = 224, 22, 76      # baskaa
-    else:
-        medal = f"{rank+1}. "
-        color = (159, 189, 184)
-
-    short_name = country if len(country) <= 14 else country[:11] + "…"
-    text_str = f"{medal}{short_name}: {wins}"
-
-   
-
-    # Emoji destekli font ile yazdır
-    try:
-        text_surf = emoji_font.render(text_str, True, color)
-    except:
-        entry_font = pygame.font.SysFont("Arial", 15, bold=True)
-        text_surf = entry_font.render(text_str, True, color)
-
-    screen.blit(text_surf, (x, y))
-
-    # 1. sıraya hafif parlama efekti
-    if rank == 0:
-        try:
-            glow = emoji_font.render(text_str, True, (255, 255, 180))
-            glow.set_alpha(70)
-            screen.blit(glow, (x + 2, y + 2))
-        except:
-            pass
+# UI panel functions moved to ui_panels.py
 
 
-# def draw_next_flags_panel(screen):
-#     if not NEXT_ROUND_QUEUE: return
-#     bg_h = 60
-#     s = pygame.Surface((WIDTH, bg_h))
-#     s.set_alpha(200)
-#     s.fill(COLOR_NEXT_FLAG_BG)
-#     #next flag yeri
-#     screen.blit(s, (0, HEIGHT + 245))
-
-#     title = font_small.render("NEXT FLAGS:", True, COLOR_ACCENT)
-#     screen.blit(title, (10, 5))
-#     start_x = 100
-#     gap_x = 70
-#     items = list(NEXT_ROUND_QUEUE.items())[:10] 
-#     for i, (name, info) in enumerate(items):
-#         flag_data = flag_manager.get_flag_by_code(info["code"], 40, 26)
-#         img = flag_data["image"]
-#         x_pos = start_x + (i * gap_x)
-#         screen.blit(img, (x_pos, 5))
-#         short_name = name[:7] + "." if len(name) > 7 else name
-#         name_surf = font_small.render(short_name, True, (200, 200, 200))
-#         screen.blit(name_surf, (x_pos, 35))
-#         if info["count"] > 1:
-#             count_surf = font_small.render(f"x{info['count']}", True, COLOR_GOLD)
-#             screen.blit(count_surf, (x_pos + 42, 5))
-
-def draw_next_flags_panel(screen):
-    # if not NEXT_ROUND_QUEUE: #liste varsa göster yoksa
-    #     return
-
-    # --- Ayarlar ve Boyutlar ---
-    # Top Winners panelinin özelliklerine benzer ayarlar
-    items = list(NEXT_ROUND_QUEUE.items())
-    total_items = len(items)
-    
-    MAX_VISIBLE = 5         # Aynı anda görünecek bayrak sayısı
-    ROW_HEIGHT = 40         # Bayrak + boşluk yüksekliği (Lider tablosundan biraz daha geniş)
-    HEADER_H = 40           # Başlık yüksekliği
-    panel_w = 122           # Panel genişliği
-    panel_h = HEADER_H + (MAX_VISIBLE * ROW_HEIGHT)
-
-    # --- Konumlandırma Hesapları ---
-    # Referans alınan Top Winners paneli (genişliği 300, y=120 varsayıldı)
-    # Lider tablosu ekranın ortasında: (WIDTH - 300) // 2
-    leaderboard_w = 300
-    leaderboard_x = (WIDTH - leaderboard_w) // 2
-    leaderboard_y = 120 
-    
-    # 4. satırın hizası: Lider tablosu Y + Başlık (45) + 3 satır (3*20) = 120 + 45 + 60 = 225
-    target_y = leaderboard_y + 45 + 60
-    
-    panel_y = target_y      # Dikeyde 4. satır hizası
-    panel_x = leaderboard_x - panel_w - 20 # Lider tablosunun 20px solu
-    
-    # Ekran dışına taşmayı önle (sol taraf)
-    if panel_x < 10: 
-        panel_x = 10
-
-    # --- Animasyon / Salınım (Top Winners ile uyumlu) ---
-    time_ms = pygame.time.get_ticks()
-    h_offset = int(6 * math.sin(time_ms * 0.002))
-    panel_x += h_offset # Hafif yatay salınım
-
-    # --- Gölge ve Arkaplan Çizimi ---
-    shadow_offset = 5
-    # Gölge
-    s_shadow = pygame.Surface((panel_w, panel_h))
-    s_shadow.set_alpha(100)
-    s_shadow.fill((0, 0, 0))
-    screen.blit(s_shadow, (panel_x + shadow_offset, panel_y + shadow_offset))
-
-    # Ana Panel
-    s = pygame.Surface((panel_w, panel_h))
-    s.set_alpha(200)
-    s.fill((12, 12, 24)) # Lider tablosuyla aynı koyu lacivert ton
-    screen.blit(s, (panel_x, panel_y))
-
-    # --- Başlık ---
-    title_str = "NEXT FLAGS"
-    try:
-        # Lider tablosundaki font stiliyle uyumlu başlık
-        title_surf = font_small.render(title_str, True, COLOR_ACCENT)
-    except:
-        sys_font = pygame.font.SysFont("Arial", 16, bold=True)
-        title_surf = sys_font.render(title_str, True, (255, 255, 255))
-    
-    screen.blit(title_surf, (panel_x + 15, panel_y + 10))
-
-    
-    # --- LİSTE BOŞSA BİLGİLENDİRME MESAJI ---
-    
-    if len(items) == 0:
-        empty_color = (255, 215, 0) # Altın Sarısı
-        
-        # Panelin boş kısmının tam ortasını bul
-        center_x = panel_x + (panel_w // 2)
-        center_y = panel_y + HEADER_H + ((panel_h - HEADER_H) // 2)
-        
-        # 1. Satır: CHAT
-        # font_ui (Arial 16 Bold) kullanıyoruz ki kalın olsun
-        t1 = font_ui.render("CHAT YOUR", True, empty_color)
-        r1 = t1.get_rect(center=(center_x, center_y - 20))
-        screen.blit(t1, r1)
-        
-        # 2. Satır: YOUR COUNTRY
-        t2 = font_ui.render("COUNTRY", True, empty_color)
-        r2 = t2.get_rect(center=(center_x, center_y))
-        screen.blit(t2, r2)
-        
-        # 3. Satır: Bayrak Emojisi (Emoji fontu varsa)
-        try:
-            # Emoji font varsa onu, yoksa normal fontu kullan
-            ef = emoji_font if emoji_font else font_ui
-            t3 = ef.render(". . . ", True, empty_color)
-            r3 = t3.get_rect(center=(center_x, center_y + 25))
-            screen.blit(t3, r3)
-        except:
-            pass
-        
-        # 4. Satır: Kırmızı Çarpı (X)
-        try:
-            ef = emoji_font if emoji_font else font_ui
-            # Parlak Kırmızı
-            t4 = ef.render("❌🏳️ EMOJI", True, (255, 50, 50)) 
-            # Konum: Bayrağın (center_y + 25) biraz daha altı
-            r4 = t4.get_rect(center=(center_x, center_y + 55)) 
-            screen.blit(t4, r4)
-        except:
-            pass
-        # ----------------------------------------
-
-    # --- Liste Çizimi (Kaydırma Mantığı) ---
-    
-    # Eğer liste kısa ise kaydırma yapma
-    if total_items <= MAX_VISIBLE:
-        scroll_y = 0
-    else:
-        # --- Kaydırma Hesaplaması (Top Winners ile birebir aynı mantık) ---
-        total_scroll = (total_items - MAX_VISIBLE) * ROW_HEIGHT
-
-        if not hasattr(draw_next_flags_panel, "scroll_offset"):
-            draw_next_flags_panel.scroll_offset = 0.0
-            draw_next_flags_panel.direction = 1
-            draw_next_flags_panel.pause_timer = 0
-            draw_next_flags_panel.last_tick = pygame.time.get_ticks()
-
-        current_tick = pygame.time.get_ticks()
-        dt = (current_tick - draw_next_flags_panel.last_tick) / 1000.0
-        draw_next_flags_panel.last_tick = current_tick
-        
-        SCROLL_SPEED = 30 # Biraz daha yavaş aksın
-
-        if draw_next_flags_panel.pause_timer > 0:
-            draw_next_flags_panel.pause_timer -= dt * 1000
-            if draw_next_flags_panel.pause_timer <= 0:
-                draw_next_flags_panel.pause_timer = 0
-                draw_next_flags_panel.direction *= -1
-        else:
-            draw_next_flags_panel.scroll_offset += draw_next_flags_panel.direction * SCROLL_SPEED * dt
-            
-            # Aşağı sınır
-            if draw_next_flags_panel.scroll_offset >= total_scroll and draw_next_flags_panel.direction == 1:
-                draw_next_flags_panel.scroll_offset = total_scroll
-                draw_next_flags_panel.pause_timer = 2000 # 2 saniye bekle
-            # Yukarı sınır
-            elif draw_next_flags_panel.scroll_offset <= 0 and draw_next_flags_panel.direction == -1:
-                draw_next_flags_panel.scroll_offset = 0
-                draw_next_flags_panel.pause_timer = 2000
-
-            # Güvenlik sınırı
-            draw_next_flags_panel.scroll_offset = max(0.0, min(draw_next_flags_panel.scroll_offset, total_scroll))
-        
-        scroll_y = draw_next_flags_panel.scroll_offset
-
-    # --- Clipping (Kesme) Bölgesi ---
-    view_y_start = panel_y + HEADER_H
-    view_y_end = panel_y + panel_h
-    
-    clip_rect = pygame.Rect(panel_x, view_y_start, panel_w, panel_h - HEADER_H)
-    clip_rect.inflate_ip(0, -2) # Hafif padding
-
-    old_clip = screen.get_clip()
-    screen.set_clip(clip_rect)
-
-    # --- Satırları Çiz ---
-    FLAG_W, FLAG_H = 30, 20 # Liste için biraz küçültülmüş bayraklar
-
-    for i, (name, info) in enumerate(items):
-        # Y Konumu: Başlangıç + (Sıra * Yükseklik) - Kaydırma Miktarı
-        y_pos = view_y_start + (i * ROW_HEIGHT) - scroll_y
-        
-        # Sadece görünür alandaysa çiz (performans ve görsel temizlik)
-        if view_y_start - ROW_HEIGHT < y_pos < view_y_end:
-            
-            # 1. Bayrak
-            flag_data = flag_manager.get_flag_by_code(info["code"], FLAG_W, FLAG_H)
-            flag_img = flag_data["image"]
-            # Dikey ortala
-            img_y = y_pos + (ROW_HEIGHT - FLAG_H) // 2
-            screen.blit(flag_img, (panel_x + 15, img_y))
-
-            # 2. İsim Metni
-            short_name = name if len(name) <= 15 else name[:13] + ".."
-            name_color = (200, 200, 200)
-            
-            # Font seçimi (Global font_small kullanıyoruz, yoksa yedek)
-            try:
-                txt_surf = font_small.render(short_name, True, name_color)
-            except:
-                fnt = pygame.font.SysFont("Arial", 14)
-                txt_surf = fnt.render(short_name, True, name_color)
-            
-            # Yazıyı dikey ortala
-            txt_y = y_pos + (ROW_HEIGHT - txt_surf.get_height()) // 2
-            screen.blit(txt_surf, (panel_x + 15 + FLAG_W + 10, txt_y))
-
-            # 3. Adet Bilgisi (x2, x3 vb.)
-            if info["count"] > 1:
-                count_str = f"x{info['count']}"
-                count_surf = font_small.render(count_str, True, COLOR_GOLD)
-                # Sağa yasla
-                c_x = panel_x + panel_w - count_surf.get_width() - 5 
-                screen.blit(count_surf, (c_x, txt_y))
-
-    # --- Clipping İptal ---
-    screen.set_clip(old_clip)
 
 
-# --- OYUN DURUMLARI ---
-STATE_MENU = 0
-STATE_COUNTDOWN = 1
-STATE_GAME = 2
-STATE_WINNER = 3
-
-current_state = STATE_MENU
-game_objects = []
-space = None
-circle_body = None
-round_start_time = 0
-winner_obj = None
+# --- OYUN DURUMLARI IMPORT EDİLİYOR ---
 #baslangic menusu
 sliders = [
     Slider(WIDTH//2 - 200, 390, 400, 20, 10, 50, SETTINGS["initial_gap"], "Baslangic Boslugu (%)"), 
