@@ -17,7 +17,7 @@ from ui_elements import TextBox, Slider, Button
 from flag_handler import FlagManager
 from physics_core import rebuild_circle_segments, create_circle_body, limit_velocity, spawn_flag
 from chat_handler import find_country_code, chat_listener_task
-from ui_panels import draw_leaderboard_panel, draw_leaderboard_entry, draw_next_flags_panel
+from ui_panels import draw_easter_egg_banner, draw_leaderboard_panel, draw_leaderboard_entry, draw_next_flags_panel
 from game_state import *
 #exe
 import sys
@@ -343,7 +343,7 @@ def start_game_sequence():
     INTERNAL_SETTINGS["elasticity"] = 1.1 
 
     INTERNAL_SETTINGS["circle_radius"] = 170 + (SETTINGS["auto_spawn"] * 1.1)
-    INTERNAL_SETTINGS["circle_radius"] = min(170, INTERNAL_SETTINGS["circle_radius"])
+    INTERNAL_SETTINGS["circle_radius"] = min(250, INTERNAL_SETTINGS["circle_radius"])
 
     space = pymunk.Space()
     space.gravity = (0, SETTINGS["gravity"])
@@ -451,6 +451,7 @@ while running:
 
         draw_leaderboard_panel(screen)
         draw_next_flags_panel(screen)
+        draw_easter_egg_banner(screen) # Sadece orada duran yazı
 
         if countdown > 0:
             count_bg = pygame.Surface((100, 100))
@@ -528,6 +529,7 @@ while running:
         
         draw_leaderboard_panel(screen)
         draw_next_flags_panel(screen)
+        draw_easter_egg_banner(screen) # Sadece orada duran yazı
 
     elif current_state == STATE_WINNER:
         # --- 1. MANTIK VE PUANLAMA ---
@@ -555,6 +557,7 @@ while running:
         # Panelleri çiz (Arka planda kalsınlar)
         draw_leaderboard_panel(screen)
         draw_next_flags_panel(screen)
+        draw_easter_egg_banner(screen) # Sadece orada duran yazı
 
         # --- 3. KAZANAN KUTUSU TASARIMI ---
         if winner_obj:
@@ -592,6 +595,7 @@ while running:
 
         draw_leaderboard_panel(screen)
         draw_next_flags_panel(screen)
+        draw_easter_egg_banner(screen) # Sadece orada duran yazı
 
         if time.time() - round_start_time > 4:
             start_game_sequence() 

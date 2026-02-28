@@ -7,7 +7,7 @@ from game_state import *
 
 # --- FONT INITIALIZATION ---
 pygame.font.init()
-font_small = pygame.font.SysFont("Arial", 12, bold=True)
+font_small = pygame.font.SysFont("Arial", 16, bold=True)#
 font_ui = pygame.font.SysFont("Arial", 16, bold=True)
 
 emoji_font = None
@@ -32,11 +32,11 @@ if emoji_font is None:
 def draw_leaderboard_panel(screen):
     if not LEADERBOARD:
         return
-    #tutulacak top winners sayısı 15
-    sorted_winners = sorted(LEADERBOARD.items(), key=lambda item: item[1], reverse=True)[:15]
+    #tutulacak top winners sayısı 15 di 10 yaptım
+    sorted_winners = sorted(LEADERBOARD.items(), key=lambda item: item[1], reverse=True)[:10]
     total_items = len(sorted_winners)
 
-    MAX_VISIBLE = 10
+    MAX_VISIBLE = 5
     ROW_HEIGHT = 20 #32 idi
     HEADER_H = 45
     panel_w = 300
@@ -217,8 +217,8 @@ def draw_next_flags_panel(screen):
     # Referans alınan Top Winners paneli (genişliği 300, y=120 varsayıldı)
     # Lider tablosu ekranın ortasında: (WIDTH - 300) // 2
     leaderboard_w = 300
-    leaderboard_x = (WIDTH - leaderboard_w) // 2
-    leaderboard_y = 120 
+    leaderboard_x = (WIDTH - leaderboard_w) // 2 
+    leaderboard_y = 10 #120 idi  
     
     # 4. satırın hizası: Lider tablosu Y + Başlık (45) + 3 satır (3*20) = 120 + 45 + 60 = 225
     target_y = leaderboard_y + 45 + 60
@@ -239,7 +239,7 @@ def draw_next_flags_panel(screen):
     shadow_offset = 5
     # Gölge
     s_shadow = pygame.Surface((panel_w, panel_h))
-    s_shadow.set_alpha(100)
+    s_shadow.set_alpha(100)     # 
     s_shadow.fill((0, 0, 0))
     screen.blit(s_shadow, (panel_x + shadow_offset, panel_y + shadow_offset))
 
@@ -255,10 +255,10 @@ def draw_next_flags_panel(screen):
         # Lider tablosundaki font stiliyle uyumlu başlık
         title_surf = font_small.render(title_str, True, COLOR_ACCENT)
     except:
-        sys_font = pygame.font.SysFont("Arial", 16, bold=True)
+        sys_font = pygame.font.SysFont("Arial", 20, bold=True)
         title_surf = sys_font.render(title_str, True, (255, 255, 255))
     
-    screen.blit(title_surf, (panel_x + 15, panel_y + 10))
+    screen.blit(title_surf, (panel_x + 15, panel_y + 10)) 
 
     
     # --- LİSTE BOŞSA BİLGİLENDİRME MESAJI ---
@@ -398,3 +398,33 @@ def draw_next_flags_panel(screen):
 
     # --- Clipping İptal ---
     screen.set_clip(old_clip)
+
+def draw_easter_egg_banner(screen):
+    # 1. Font ve Yazı (Sadece bir kez render edilecek şekilde sabit)
+    # 35-40 arası bir boyut "kabak gibi" görünmesi için idealdir.
+    warn_font = pygame.font.SysFont("Arial Black", 30)
+    text_surf = warn_font.render("67 = BAN!", True, (250, 0, 0))
+    
+    
+
+    # 2. Konumlandırma
+    # WIDTH settings den geliyor. 310 dikey koordinatı panellerin altındaki boşluktur.
+    text_rect = text_surf.get_rect(center=(WIDTH // 2,HEIGHT // 2 - 275)) # ekranın tam ortasında,310 kadar yukarda 
+    
+    # --- ARKADAKİ PENCERE  ---
+    bg_rect = text_rect.inflate(6, 2)
+    # pygame.draw.rect(screen, (10, 10, 10), bg_rect) satırı yerine:
+    bg_surf = pygame.Surface((bg_rect.width, bg_rect.height)) # 1. Kutu kadar yüzey oluştur
+    bg_surf.set_alpha(190) # 2. Opaklık ayarla (0-255 arası, 150 orta şeffaftır)
+    bg_surf.fill((10, 10, 10)) # Rengi doldur
+    screen.blit(bg_surf, bg_rect) # Ekrana bas
+
+    # pygame.draw.rect(screen, (255, 0, 0), bg_rect, 2) # Kırmızı çerçeve
+    # -------------------------------------
+
+    # 3. Gölge (Okunurluk için şart)
+    # shadow_surf = warn_font.render("67 = BAN! ", True, (0, 0, 0))
+    # screen.blit(shadow_surf, (text_rect.x + 4, text_rect.y + 2))
+    
+    # 4. Yazıyı Bas
+    screen.blit(text_surf, text_rect)    

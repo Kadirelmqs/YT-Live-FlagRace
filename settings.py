@@ -19,16 +19,17 @@ SETTINGS = {
 
 # Hesaplanan/Sabit Ayarlar
 INTERNAL_SETTINGS = {
-    "circle_radius": 170,   
+    "circle_radius": 270,  #170 idi 
     "elasticity": 1.1,      
-    "wall_thickness": 12
+    "wall_thickness": 8
 }
 
 
 # Renkler
 COLOR_BG = (20, 20, 20)
 COLOR_TEXT = (255, 255, 255)
-COLOR_ACCENT = (0, 255, 0)
+# COLOR_ACCENT = (20, 122, 2)# 
+COLOR_ACCENT = (24, 143, 3)# 
 COLOR_COUNTDOWN = (180, 0, 255) 
 COLOR_GOLD = (255, 215, 0)
 COLOR_SILVER = (192, 192, 192)
