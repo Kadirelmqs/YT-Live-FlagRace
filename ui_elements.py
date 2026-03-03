@@ -136,3 +136,4 @@ class Button:
         label = font_ui.render(self.text, True, (0, 0, 0))
         text_rect = label.get_rect(center=self.rect.center)
         screen.blit(label, text_rect)
+

@@ -58,31 +58,31 @@ def generate_native_dictionary():
                 except Exception:
                     continue
 
-    # 3. Manuel Eklemeler (Canlı yayınlar için elzem olan özel kısaltmalar)
-    # Bunlar en son döngüde eklenir ki asla üzerine yazılıp kaybolmasın.
-    custom_aliases = {
-        "uk": "GB", 
-        "usa": "US", 
-        "us": "US", 
-        "uae": "AE", 
-        "turkiye": "TR", 
-        "türkiye": "TR", 
-        "turkey": "TR",
-        "polska": "PL",
-        "deutschland": "DE",
-        "russia": "RU",
-        "korea": "KR",
-        "japan": "JP",
-        "brasil": "BR",
-        "spain": "ES",
-        "italy": "IT",
-        "france": "FR"
-    }
+    # # 3. Manuel Eklemeler (Canlı yayınlar için elzem olan özel kısaltmalar)
+    # # Bunlar en son döngüde eklenir ki asla üzerine yazılıp kaybolmasın.
+    # custom_aliases = {
+    #     "uk": "GB", 
+    #     "usa": "US", 
+    #     "us": "US", 
+    #     "uae": "AE", 
+    #     "turkiye": "TR", 
+    #     "türkiye": "TR", 
+    #     "turkey": "TR",
+    #     "polska": "PL",
+    #     "deutschland": "DE",
+    #     "russia": "RU",
+    #     "korea": "KR",
+    #     "japan": "JP",
+    #     "brasil": "BR",
+    #     "spain": "ES",
+    #     "italy": "IT",
+    #     "france": "FR"
+    # }
     
-    for alias, code in custom_aliases.items():
-        cleaned_alias = clean_text(alias)
-        if cleaned_alias:
-            country_lookup[cleaned_alias] = code
+    # for alias, code in custom_aliases.items():
+    #     cleaned_alias = clean_text(alias)
+    #     if cleaned_alias:
+    #         country_lookup[cleaned_alias] = code
 
     # JSON olarak dışa aktar
     with open('country_aliases.json', 'w', encoding='utf-8') as f:

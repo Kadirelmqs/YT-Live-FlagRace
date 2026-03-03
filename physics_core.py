@@ -45,7 +45,8 @@ def limit_velocity(body, gravity, damping, dt):
         scale = MAX_VELOCITY / l
         body.velocity = body.velocity * scale
 
-def spawn_flag(space, pos, radius, specific_data=None):
+# def spawn_flag(space, pos, radius, specific_data=None):
+def spawn_flag(space, pos, radius, specific_data=None, flag_manager=None):
     mass = 10 
     moment = pymunk.moment_for_circle(mass, 0, radius)
     body = pymunk.Body(mass, moment)
@@ -61,8 +62,15 @@ def spawn_flag(space, pos, radius, specific_data=None):
     
     if specific_data:
         shape.custom_data = specific_data
-    else:
+    elif flag_manager:
         shape.custom_data = flag_manager.get_random_flag(w, h)
+    else:
+        shape.custom_data = {
+            "image": pygame.Surface((int(w), int(h))),
+            "name": "Unknown",
+            "original": None
+        }
         
     space.add(body, shape)
     return shape
+

@@ -1,1 +1,0 @@
-pyinstaller --onefile --windowed --add-data "flags;flags" --add-data "background.jpg;." game.py
