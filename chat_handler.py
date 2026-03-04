@@ -106,7 +106,11 @@ def chat_listener_task(chat_obj, event_queue, next_round_queue):
                         try:
                             std_name = pycountry.countries.get(alpha_2=code).name
                         except:
-                            std_name = msg
+                            # pycountry bulamazsa (örneğin 67 gibi özel bir kodsa)
+                            # Kullanıcının ham mesajını ASLA ekrana basma! Sadece kodu bas.
+                            std_name = str(code).upper()
+
+                            # std_name = msg
                         
                         # oyun döngüsüne olay olarak bildir
                         try:

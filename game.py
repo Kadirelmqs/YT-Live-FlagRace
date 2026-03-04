@@ -10,6 +10,7 @@ import pygame
 import sys
 from settings import *
 from game_engine import FlagBattleGame
+from window_manager import WindowManager
 
 def main():
     """
@@ -18,8 +19,13 @@ def main():
     pygame.init()
     
     # Ekranı oluştur
-    screen = pygame.display.set_mode((WIDTH, HEIGHT))
-    pygame.display.set_caption("Flag Battle Royale - Live Edition")
+    # screen = pygame.display.set_mode((WIDTH, HEIGHT))
+    # pygame.display.set_caption("Flag Battle Royale - Live Edition")
+    wm = WindowManager(WIDTH, HEIGHT, "Flag Learn Battle Royale - Live Edition")
+    screen = wm.create_window()
+    
+    game = FlagBattleGame(screen)
+    clock = pygame.time.Clock()
     
     # Clipboard desteğini başlat (ekrandan SONRA gerekli)
     try:

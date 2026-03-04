@@ -34,9 +34,9 @@ class LeaderboardPanel:
         panel_h = HEADER_H + (MAX_VISIBLE * ROW_HEIGHT)
         
         # Gölge surface'i
-        self.shadow_surf = pygame.Surface((panel_w, panel_h))
-        self.shadow_surf.set_alpha(cfg["shadow_alpha"])
-        self.shadow_surf.fill(COLOR_SHADOW)
+        # self.shadow_surf = pygame.Surface((panel_w, panel_h))
+        # self.shadow_surf.set_alpha(cfg["shadow_alpha"])
+        # self.shadow_surf.fill(COLOR_SHADOW)
         
         # Arka plan surface'i
         self.bg_surf = pygame.Surface((panel_w, panel_h))
@@ -70,15 +70,15 @@ class LeaderboardPanel:
             panel_x = WIDTH - panel_w - 20
 
         # yatay salınım animasyonu (sadece render pozisyonini etkiler)
-        time_ms = pygame.time.get_ticks()
-        h_offset = int(
-            cfg["horizontal_oscillation_amplitude"] *
-            math.sin(time_ms * cfg["oscillation_frequency"])
-        )
-        panel_x += h_offset
+        # time_ms = pygame.time.get_ticks()
+        # h_offset = int(
+        #     cfg["horizontal_oscillation_amplitude"] *
+        #     math.sin(time_ms * cfg["oscillation_frequency"])
+        # )
+        # panel_x += h_offset
 
         # STATIK GÖLGEYİ BLITLEY
-        screen.blit(self.shadow_surf, (panel_x + cfg["shadow_offset"], panel_y + cfg["shadow_offset"]))
+        # screen.blit(self.shadow_surf, (panel_x + cfg["shadow_offset"], panel_y + cfg["shadow_offset"]))
 
         # STATIK ARKA PLANI BLITLE
         screen.blit(self.bg_surf, (panel_x, panel_y))
@@ -161,76 +161,119 @@ class LeaderboardPanel:
 
 class LikeBarPanel:
     """
-    Doyumsuz Beğeni Barı.
-    Sadece mevcut hedefe olan ilerlemeyi gösterir ve hedef dolduğunda yeni hedefe geçer.
+    Dinamik ve Animasyonlu Beğeni Barı.
+    Hedefe ulaşınca parlar, yeni hedef belirlendiğinde akıcı bir şekilde (Lerp) geri kayar.
     """
     def sync_initial_likes(self, start_likes):
-        """
-        Yayına ilk bağlanıldığında mevcut beğeniye göre hedefi belirler.
-        Oyun içi etkinlikleri (level_up) tetiklemeden barı güncel duruma getirir.
-        """
         while start_likes >= self.current_target:
             self.prev_target = self.current_target
             self.current_target = get_next_like_target(self.current_target)
 
     def __init__(self, x, y):
-
         self.x = x
         self.y = y
         self.cfg = LIKE_BAR_SETTINGS
         self.prev_target = 0
         self.current_target = self.cfg["initial_target"]
 
+        # Görsel animasyon değişkenleri
+        self.visual_width = 0.0  # Barın ekranda çizilen gerçek genişliği (Akıcılık için)
+        self.flash_timer = 0     # Hedef dolduğunda parlaması için sayaç
+
     def check_level_up(self, current_likes):
-        """
-        Beğeni sayısı hedefi geçtiyse barı sıfırlar, yeni hedefi belirler ve True döner.
-        Oyun motoru bu True değerini yakalayıp istediği olayı tetikler.
-        """
         if current_likes >= self.current_target:
             self.prev_target = self.current_target
             self.current_target = get_next_like_target(self.current_target)
+            self.flash_timer = 15  # 15 frame boyunca (yaklaşık 0.25 sn) beyaz parlama animasyonu
             return True
         return False
 
-    def draw(self, screen, current_likes, font, emoji_font):
+    def draw(self, screen, current_likes, font_small, emoji_font):
         w = self.cfg["width"]
         h = self.cfg["height"]
         
-        # Matematiksel taşmaları önlemek için sınırları belirle
+        # 1. MANTIKSAL HESAPLAMALAR
         safe_likes = max(self.prev_target, min(current_likes, self.current_target))
-        
-        # Sadece bulunduğumuz aşamadaki (prev_target ile current_target arası) ilerlemeyi hesapla
         range_total = self.current_target - self.prev_target
         progress = safe_likes - self.prev_target
         
-        fill_ratio = progress / range_total if range_total > 0 else 0
-        fill_width = int(w * fill_ratio)
+        target_fill_ratio = progress / range_total if range_total > 0 else 0
+        target_width = w * target_fill_ratio
 
-        # Çizim yüzeyi (saydamlık için)
-        surface = pygame.Surface((w, h), pygame.SRCALPHA)
+        # 2. LERP (LİNEER İNTERPOLASYON) - Barın yumuşak kayması
+        self.visual_width += (target_width - self.visual_width) * 0.1
+
+        # 3. SADECE BAR İÇİN YÜZEY (Performans için sadece bar boyutunda oluşturuyoruz)
+        bar_surface = pygame.Surface((w, h), pygame.SRCALPHA)
         
-        # Boş bar (Arka plan)
+        # Arka plan kapsülü
         bg_rect = pygame.Rect(0, 0, w, h)
-        pygame.draw.rect(surface, (*self.cfg["bg_color"], self.cfg["alpha"]), bg_rect, border_radius=self.cfg["border_radius"])
+        pygame.draw.rect(bar_surface, (*self.cfg["bg_color"], self.cfg["alpha"]), bg_rect, border_radius=self.cfg["border_radius"])
         
-        # Dolan kısım
-        if fill_width > 0:
-            fill_rect = pygame.Rect(0, 0, fill_width, h)
-            pygame.draw.rect(surface, (*self.cfg["fill_color"], self.cfg["alpha"]), fill_rect, border_radius=self.cfg["border_radius"])
-            
-        screen.blit(surface, (self.x, self.y))
+        # Dolan Kırmızı Bar
+        current_fill = max(0, int(self.visual_width))
+        if current_fill > 0:
+            fill_rect = pygame.Rect(0, 0, current_fill, h)
+            if self.flash_timer > 0:
+                fill_color = (255, 255, 255) # Parlama efekti
+                self.flash_timer -= 1
+            else:
+                fill_color = self.cfg["fill_color"]
+            pygame.draw.rect(bar_surface, (*fill_color, self.cfg["alpha"]), fill_rect, border_radius=self.cfg["border_radius"])
+
+        # Sadece barı (yazısız) ekrana bas
+        screen.blit(bar_surface, (self.x, self.y))
+
+        # ------------------------------------------------------------------
+        # 4. YAZILARI DOĞRUDAN ANA EKRANA ÇİZ (Kesilmeyi önler, donanımı rahatlatır)
+        # ------------------------------------------------------------------
         
-        # Yazı: Toplam Beğeni / Güncel Hedef
-        text_str = f"👍 {current_likes} / {self.current_target}"
+        # Sağ uçtaki sabit hedef rakamı (Rengini biraz açtık daha iyi okunsun diye)
+        t_surf = font_small.render(str(self.current_target), True, (200, 200, 200))
+        t_rect = t_surf.get_rect(midright=(self.x + w - 15, self.y + h // 2))
+        screen.blit(t_surf, t_rect)
+
+        # Kırmızı barın ucuyla beraber hareket eden kalp
         try:
-            text_surf = emoji_font.render(text_str, True, self.cfg["text_color"])
+            like_surf = emoji_font.render(f"❤️ {current_likes}", True, (200, 200, 200))
         except:
-            text_surf = font.render(text_str, True, self.cfg["text_color"])
+            like_surf = font_small.render(f"LIKE {current_likes}", True, (200, 200, 200))
             
-        text_rect = text_surf.get_rect(center=(self.x + w // 2, self.y + h // 2))
-        screen.blit(text_surf, text_rect)
+        # Yazı kırmızı barın en uç (sağ) noktasını takip eder
+        like_x = self.x + current_fill - 10
+        if like_x < self.x + 35: # Bar en baştayken yazının dışarı taşmasını engeller
+            like_x = self.x + 35
+            
+        like_rect = like_surf.get_rect(midright=(like_x, self.y + h // 2))
+        screen.blit(like_surf, like_rect)
 
+        # 5. BİLİNÇALTI MESAJI (Ana ekrana basıldığı için asla kesilmez)
+        time_ms = pygame.time.get_ticks()
+        pulse_alpha = int(217 + 38 * math.sin(time_ms * 0.006)) 
 
+        cta_text = "❤️ DOUBLE TAP! 👍"
+        cta_color = (179, 5, 5)
+        
+        try:
+            cta_surf = emoji_font.render(cta_text, True, cta_color)
+            shadow_surf = emoji_font.render(cta_text, True, (0, 0, 0))
+        except:
+            cta_surf = font_small.render(cta_text, True, cta_color)
+            shadow_surf = font_small.render(cta_text, True, (0, 0, 0))
+
+        cta_surf.set_alpha(pulse_alpha)
+        shadow_surf.set_alpha(pulse_alpha)
+        
+        # Konumu belirle: Barın (self.y) hemen 5 piksel ÜSTÜNE koyuyoruz
+        cta_rect = cta_surf.get_rect(midbottom=(self.x + w // 2, self.y - 5))
+
+        # Gölgeyi daha az ve stratejik noktalara vurarak FPS'i koruyoruz
+        offsets = [(-1, 1), (1, 1), (0, 2)]
+        for ox, oy in offsets:
+            screen.blit(shadow_surf, (cta_rect.x + ox, cta_rect.y + oy))
+
+        # Parlak yazıyı en üste bas
+        screen.blit(cta_surf, cta_rect)
 # class NextFlagsPanel:
 #     """Next flags panel independent component"""
 
@@ -389,9 +432,9 @@ class NextFlagsPanel:
         self.header_h = cfg["header_height"]
         
         # Gölge surface'i
-        self.shadow_surf = pygame.Surface((self.panel_w, self.panel_h))
-        self.shadow_surf.set_alpha(cfg["shadow_alpha"])
-        self.shadow_surf.fill(COLOR_SHADOW)
+        # self.shadow_surf = pygame.Surface((self.panel_w, self.panel_h))
+        # self.shadow_surf.set_alpha(cfg["shadow_alpha"])
+        # self.shadow_surf.fill(COLOR_SHADOW)
         
         # Arka plan surface'i
         self.bg_surf = pygame.Surface((self.panel_w, self.panel_h))
@@ -416,15 +459,15 @@ class NextFlagsPanel:
         panel_x = self.x
         panel_y = self.y
         # Aşağı-yukarı salınım animasyonu
-        time_ms = pygame.time.get_ticks()
-        v_offset = int(
-            cfg["vertical_oscillation_amplitude"] *
-            math.sin(time_ms * cfg["oscillation_frequency"])
-        )
-        panel_y += v_offset
+        # time_ms = pygame.time.get_ticks()
+        # v_offset = int(
+        #     cfg["vertical_oscillation_amplitude"] *
+        #     math.sin(time_ms * cfg["oscillation_frequency"])
+        # )
+        # panel_y += v_offset
 
         # 2. STATİK ÇİZİMLER (Gölge, Arka plan, Başlık)
-        screen.blit(self.shadow_surf, (panel_x + cfg["shadow_offset"], panel_y + cfg["shadow_offset"]))
+        # screen.blit(self.shadow_surf, (panel_x + cfg["shadow_offset"], panel_y + cfg["shadow_offset"]))
         screen.blit(self.bg_surf, (panel_x, panel_y))
         
         title_rect = self.title_surf.get_rect(center=(panel_x + self.panel_w // 2, panel_y + self.header_h // 2))

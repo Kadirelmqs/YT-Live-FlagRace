@@ -68,6 +68,10 @@ class FlagManager:
         for data in self.flags_data:
             if data["code"] == code:
                 scaled = pygame.transform.scale(data["raw_img"], (target_w, target_h))
+                # cache sınırı kontrolü
+                # self.image_cache[cache_key] = scaled  # Cache'e sakla
+                if len(self.image_cache) > 500:
+                    self.image_cache.clear()
                 self.image_cache[cache_key] = scaled  # Cache'e sakla
                 return {"image": scaled, "name": data["name"], "original": data["raw_img"]}
         
@@ -107,6 +111,9 @@ class FlagManager:
         
         # Yoksa oluştur ve cache'e sakla
         scaled = pygame.transform.scale(data["raw_img"], (target_w, target_h))
+        # if len(self.image_cache) > 500:  # eskiden direk ekliyorduk
+        if len(self.image_cache) > 500:
+            self.image_cache.clear()
         self.image_cache[cache_key] = scaled
         return {"image": scaled, "name": data["name"], "original": data["raw_img"]}
 

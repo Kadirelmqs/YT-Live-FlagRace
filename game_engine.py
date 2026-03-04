@@ -48,9 +48,13 @@ class FlagBattleGame:
 
         # bağımsız UI panel component'leri
         from ui_panels import LeaderboardPanel, NextFlagsPanel, EasterEggBanner,LikeBarPanel
-        lb_x = (WIDTH - LEADERBOARD_PANEL["width"]) // 2
+        lb_x = LEADERBOARD_PANEL["x_position"]
         lb_y = LEADERBOARD_PANEL["y_position"]
         self.leaderboard_panel = LeaderboardPanel(lb_x, lb_y)
+
+        # lb_x = (WIDTH - LEADERBOARD_PANEL["width"]) // 2
+        # lb_y = LEADERBOARD_PANEL["y_position"]
+        # self.leaderboard_panel = LeaderboardPanel(lb_x, lb_y)
         # nf_x = lb_x - NEXT_FLAGS_PANEL["width"] + NEXT_FLAGS_PANEL["horizontal_offset_x"]
         # nf_y = lb_y + LEADERBOARD_PANEL["header_height"] #liderlik panelinin hemen altına hizala
         # self.next_flags_panel = NextFlagsPanel(nf_x, nf_y)
@@ -160,13 +164,22 @@ class FlagBattleGame:
         )
     
     def _create_sliders(self):
-        """Menü sliderlarını oluştur"""
+        """Menü sliderlarını oluştur (Varsayılan değerler tam ortada olacak şekilde ayarlandı)"""
         return [
+            # 1. Başlangıç Boşluğu: 30 (Min:10 + Max:50 = 60 / 2 = 30) - Zaten Mükemmeldi
             Slider(WIDTH // 2 - 200, 390, 400, 20, 10, 50, SETTINGS["initial_gap"], "Baslangic Boslugu (%)"),
-            Slider(WIDTH // 2 - 200, 460, 400, 20, 10, 60, SETTINGS["round_time"], "Tur Suresi (sn)"),
-            Slider(WIDTH // 2 - 200, 530, 400, 20, 5, 200, SETTINGS["auto_spawn"], "Baslangic Bayrak Sayisi"),
-            Slider(WIDTH // 2 - 200, 600, 400, 20, 1, 300, SETTINGS["gravity"], "Gravity (Yercekimi)"),
-            Slider(WIDTH // 2 - 200, 670, 400, 20, 0.2, 10.0, SETTINGS["rotation_speed"], "Donme Hizi"),
+            
+            # 2. Tur Süresi: 20 (Min:10 + Max:30 = 40 / 2 = 20)
+            Slider(WIDTH // 2 - 200, 460, 400, 20, 10, 30, SETTINGS["round_time"], "Tur Suresi (sn)"),
+            
+            # 3. Başlangıç Bayrak: 40 (Min:0 + Max:80 = 80 / 2 = 40)
+            Slider(WIDTH // 2 - 200, 530, 400, 20, 0, 80, SETTINGS["auto_spawn"], "Baslangic Bayrak Sayisi"),
+            
+            # 4. Gravity: 40 (Min:0 + Max:80 = 80 / 2 = 40)
+            Slider(WIDTH // 2 - 200, 600, 400, 20, 0, 80, SETTINGS["gravity"], "Gravity (Yercekimi)"),
+            
+            # 5. Dönme Hızı: 1.5 (Min:0.0 + Max:3.0 = 3.0 / 2 = 1.5)
+            Slider(WIDTH // 2 - 200, 670, 400, 20, 0.0, 3.0, SETTINGS["rotation_speed"], "Donme Hizi"),
         ]
 
         # ==========================================
@@ -379,6 +392,9 @@ class FlagBattleGame:
                 # Normal oyun içi seviye atlama (Level Up) kontrolü
                 if self.like_bar.check_level_up(self.current_likes):
                     print(f">>> BEĞENİ HEDEFİNE ULAŞILDI! YENİ HEDEF: {self.like_bar.current_target} <<<")
+                    # 1. Ekranı 1 saniye boyunca sallandır (Screen Shake)
+                    # 2. Rastgele 5 tane altın renkli dev bayrak spawn et
+                    # 3. Şakşak/Alkış ses efekti oynat
     def draw(self):
         """Ekrana çiz (draw'ı duruma ilet)"""
         self.current_state.draw(self.screen)

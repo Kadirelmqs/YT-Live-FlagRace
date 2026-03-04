@@ -3,13 +3,13 @@
 # ==========================================
 
 # --- EKRAN AYARLARI ---
-WIDTH, HEIGHT = 1080, 1080
-CIRCLE_CENTER = (WIDTH // 2, HEIGHT // 2 - 3)
+WIDTH, HEIGHT = 600, 1066
+CIRCLE_CENTER = (WIDTH // 2, HEIGHT*0.64)
 FLAGS_FOLDER = "flags"
 BACKGROUND_FILE_NAME = "background.jpg"
 
 # --- MAKSİMUM VELOSİTE (Bayrakların hızı sınırı) ---
-MAX_VELOCITY = 250.0
+MAX_VELOCITY = 300.0
 
 # --- OYUN MEKANİĞİ AYARLARI ---
 SETTINGS = {
@@ -49,31 +49,32 @@ COLOR_EMPTY_MSG = (255, 215, 0)
 # ==========================================
 # Liderlik Paneli
 LEADERBOARD_PANEL = {
-    "width": 300,
+    "width": 200,
+    "x_position": WIDTH//2 - 300,          # Sağa çektik 
     "y_position": 90,
     "max_visible_items": 5,
     "row_height": 20,
-    "header_height": 45,
-    "shadow_offset": -5,
-    "shadow_alpha": 100,
+    "header_height": 35,
+    # "shadow_offset": -5,
+    # "shadow_alpha": 100,
     "panel_alpha": 200,
     "title_color_lb": (255, 220, 40),
     "title_offset_x": 15,
     "title_offset_y": 8,
-    "horizontal_oscillation_amplitude": 6,
-    "oscillation_frequency": 0.002,
+    # "horizontal_oscillation_amplitude": 6,
+    # "oscillation_frequency": 0.002,
 }
 
 # Beğeni Barı Ayarları
 LIKE_BAR_SETTINGS = {
     "width": 400,
-    "height": 30,
-    "y_position": 150,#
-    "bg_color": (40, 40, 40),
-    "fill_color": (255, 0, 50),
+    "height": 25,
+    "y_position": HEIGHT*0.23,#
+    "bg_color": (30, 30, 35), # Daha koyu, şık bir arka plan
+    "fill_color": (235, 20, 75), # Tatlı ve canlı bir TikTok/Kalp kırmızısı
     "text_color": (255, 255, 255),
     "alpha": 200,
-    "border_radius": 15,
+    "border_radius": 13,  # Tamamen yuvarlak köşeler (Kapsül görünümü)
     "initial_target": 10
 }
 #Beğeni hedeflerini belirleyen fonksiyon
@@ -109,20 +110,20 @@ def get_next_like_target(current_target):
 
 # Sonraki Bayraklar Paneli (YATAY TASARIM)
 NEXT_FLAGS_PANEL = {
-    "width": 650,               # Panelin toplam genişliği
+    "width": WIDTH-20,               # Panelin toplam genişliği
     "height": 110,              # Panelin toplam yüksekliği
-    "y_position": 800,           # Çemberin üstünde duracağı dikey konum yukardan uzaklık
-    "x_position": 215,          #(Sağ-sol konumu)
+    "y_position": HEIGHT* 0.28,           # Çemberin üstünde duracağı dikey konum yukardan uzaklık
+    "x_position": (WIDTH - (WIDTH-20)) // 2,          #(Sağ-sol konumu)
     "item_width": 100,          # Her bir bayrak kutusunun genişliği
     "header_height": 30,        # Başlık kısmının yüksekliği
-    "shadow_offset": 5,         # Gölge derinliği
-    "shadow_alpha": 100,
+    # "shadow_offset": 5,         # Gölge derinliği
+    # "shadow_alpha": 100,
     "panel_alpha": 200,
     "title_color_nf": (5, 179, 2),
     "scroll_speed": 40,         # Sağa sola kayma hızı
     "scroll_pause_duration_ms": 2000,
-    "vertical_oscillation_amplitude": 4, # Aşağı yukarı salınım genliği
-    "oscillation_frequency": 0.002,
+    # "vertical_oscillation_amplitude": 4, # Aşağı yukarı salınım genliği
+    # "oscillation_frequency": 0.002,
 }
 
 # ==========================================
@@ -171,11 +172,11 @@ ANIMATIONS = {
 EASTER_EGG = {
     "text": "67 = BAN!",
     "font_name": "Arial Black",
-    "font_size": 30,
+    "font_size": 15,
     "color": (250, 0, 0),
     "bg_color": (10, 10, 10),
     "bg_alpha": 190,
-    "offset_y": -275,
+    "offset_y": HEIGHT * 0.65,
 }
 
 YOUTUBE_API_KEY = "AIzaSyBx5GR7JooHT4zb0IEcoB9QV-C7lIcq290"

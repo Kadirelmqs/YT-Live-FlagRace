@@ -52,7 +52,13 @@ class MenuState(GameState):
     MENÜ DURUMU: Oyunun başlangıç menüsü.
     Kullanıcı ayarları seçer ve oyun başlatır.
     """
-    
+    def __init__(self, game_engine):
+        super().__init__(game_engine)
+        # statik başlık ve etiket yüzeyleri yalnızca bir kez hazırlanır
+        self.title_surf = self.game.font_big.render("FLAG BATTLE", True, COLOR_ACCENT)
+        self.title_rect = self.title_surf.get_rect(center=(WIDTH // 2, 230))
+        self.lbl_surf = self.game.font_ui.render("Youtube Video ID:", True, COLOR_TEXT)
+
     def handle_event(self, event):
         """Menü kontrolleri (sliders, textbox, buton)"""
         for slider in self.game.sliders:
@@ -77,13 +83,12 @@ class MenuState(GameState):
         # s_bg.fill((0, 0, 0))
         # screen.blit(s_bg, (WIDTH // 2 - 200, 50))
         
-        title = self.game.font_big.render("FLAG BATTLE", True, COLOR_ACCENT)
-        title_rect = title.get_rect(center=(WIDTH // 2, 230))
-        screen.blit(title, title_rect)
+        # statik yüzeyler kullanılıyor
+        screen.blit(self.title_surf, self.title_rect)
         
         # Video ID Input
-        lbl = self.game.font_ui.render("Youtube Video ID:", True, COLOR_TEXT)
-        screen.blit(lbl, (WIDTH // 2 - 200, 280))
+        # lbl = self.game.font_ui.render("Youtube Video ID:", True, COLOR_TEXT)
+        screen.blit(self.lbl_surf, (WIDTH // 2 - 200, 280))
         self.game.video_id_input.draw(screen)
         
         # Sliders
@@ -104,6 +109,12 @@ class CountdownState(GameState):
     
     def __init__(self, game_engine):
         super().__init__(game_engine)
+        # state'e girerken kalan sohbet kuyruğunu boşalt
+        while not self.game.chat_event_queue.empty():
+            try:
+                self.game.chat_event_queue.get_nowait()
+            except queue.Empty:
+                break
         self.start_time = time.time()
     
     def handle_event(self, event):
@@ -180,16 +191,29 @@ class GamePlayState(GameState):
         self.start_time = time.time()
     
     def handle_event(self, event):
-        """Oyun sırasında sadece SPACE tuşu ile bayrak ekle"""
-        if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
-            obj = spawn_flag(
-                self.game.space, 
-                CIRCLE_CENTER, 
-                SETTINGS["flag_size"],
-                flag_manager=self.game.flag_manager
-            )
-            self.game.game_objects.append(obj)
-    
+        """Oyun sırasında olayları dinle"""
+        # 1. ANA KONTROL: Sadece klavye tuşlarına basıldığında içeri gir
+        if event.type == pygame.KEYDOWN:
+            
+            # 2. ALT KONTROL A: Boşluk tuşu mu?
+            if event.key == pygame.K_SPACE:
+                obj = spawn_flag(
+                    self.game.space,
+                    CIRCLE_CENTER,
+                    SETTINGS["flag_size"],
+                    flag_manager=self.game.flag_manager
+                )
+                self.game.game_objects.append(obj)
+                
+            # 2. ALT KONTROL B: Yukarı ok tuşu mu? (Üstteki if ile TAM AYNI HİZADA olmalı)
+            elif event.key == pygame.K_UP:
+                # Her basışta beğeniyi 1 (veya 3) artır
+                self.game.current_likes += 1 
+                print(f"[TEST] Beğeni artırıldı: {self.game.current_likes}")
+                
+                # Bar hedefe ulaştı mı diye kontrol et
+                if self.game.like_bar.check_level_up(self.game.current_likes):
+                    print(f">>> [TEST] BEĞENİ HEDEFİNE ULAŞILDI! YENİ HEDEF: {self.game.like_bar.current_target} <<<")
     def _process_chat_events(self):
         """
         Sohbet kuyruğundan gelen olayları işle.
