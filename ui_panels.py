@@ -179,6 +179,15 @@ class LikeBarPanel:
         # Görsel animasyon değişkenleri
         self.visual_width = 0.0  # Barın ekranda çizilen gerçek genişliği (Akıcılık için)
         self.flash_timer = 0     # Hedef dolduğunda parlaması için sayaç
+        
+        # Bellek sızıntısını önlemek için önbellek (cache) değişkenleri
+        self.bar_surface = pygame.Surface((self.cfg["width"], self.cfg["height"]), pygame.SRCALPHA)
+        self.cached_likes = -1
+        self.cached_target = -1
+        self.like_surf = None
+        self.target_surf = None
+        self.cta_surf = None
+        self.shadow_surf = None
 
     def check_level_up(self, current_likes):
         if current_likes >= self.current_target:
@@ -189,91 +198,76 @@ class LikeBarPanel:
         return False
 
     def draw(self, screen, current_likes, font_small, emoji_font):
-        w = self.cfg["width"]
-        h = self.cfg["height"]
+        w, h = self.cfg["width"], self.cfg["height"]
         
-        # 1. MANTIKSAL HESAPLAMALAR
         safe_likes = max(self.prev_target, min(current_likes, self.current_target))
         range_total = self.current_target - self.prev_target
         progress = safe_likes - self.prev_target
-        
-        target_fill_ratio = progress / range_total if range_total > 0 else 0
-        target_width = w * target_fill_ratio
+        # target_width = w * (progress / range_total if range_total > 0 else 0)
 
-        # 2. LERP (LİNEER İNTERPOLASYON) - Barın yumuşak kayması
+        # --- PSİKOLOJİK TEŞVİK (Minimum %15 Doluluk) ---
+        # target_width = w * (progress / range_total if range_total > 0 else 0)
+        actual_ratio = progress / range_total if range_total > 0 else 0
+        min_width = w * 0.15  # %15'lik minimum başlangıç
+        target_width = min_width + ((w - min_width) * actual_ratio)
+        # -----------------------------------------------
+        
         self.visual_width += (target_width - self.visual_width) * 0.1
-
-        # 3. SADECE BAR İÇİN YÜZEY (Performans için sadece bar boyutunda oluşturuyoruz)
-        bar_surface = pygame.Surface((w, h), pygame.SRCALPHA)
         
-        # Arka plan kapsülü
+        # HER FRAME YENİ YÜZEY YARATMAK YERİNE VAR OLANI TEMİZLE (Memory Leak Çözümü)
+        self.bar_surface.fill((0, 0, 0, 0))
+        
         bg_rect = pygame.Rect(0, 0, w, h)
-        pygame.draw.rect(bar_surface, (*self.cfg["bg_color"], self.cfg["alpha"]), bg_rect, border_radius=self.cfg["border_radius"])
+        pygame.draw.rect(self.bar_surface, (*self.cfg["bg_color"], self.cfg["alpha"]), bg_rect, border_radius=self.cfg["border_radius"])
         
-        # Dolan Kırmızı Bar
         current_fill = max(0, int(self.visual_width))
         if current_fill > 0:
             fill_rect = pygame.Rect(0, 0, current_fill, h)
-            if self.flash_timer > 0:
-                fill_color = (255, 255, 255) # Parlama efekti
-                self.flash_timer -= 1
-            else:
-                fill_color = self.cfg["fill_color"]
-            pygame.draw.rect(bar_surface, (*fill_color, self.cfg["alpha"]), fill_rect, border_radius=self.cfg["border_radius"])
-
-        # Sadece barı (yazısız) ekrana bas
-        screen.blit(bar_surface, (self.x, self.y))
-
-        # ------------------------------------------------------------------
-        # 4. YAZILARI DOĞRUDAN ANA EKRANA ÇİZ (Kesilmeyi önler, donanımı rahatlatır)
-        # ------------------------------------------------------------------
+            fill_color = (255, 255, 255) if self.flash_timer > 0 else self.cfg["fill_color"]
+            if self.flash_timer > 0: self.flash_timer -= 1
+            pygame.draw.rect(self.bar_surface, (*fill_color, self.cfg["alpha"]), fill_rect, border_radius=self.cfg["border_radius"])
         
-        # Sağ uçtaki sabit hedef rakamı (Rengini biraz açtık daha iyi okunsun diye)
-        t_surf = font_small.render(str(self.current_target), True, (200, 200, 200))
-        t_rect = t_surf.get_rect(midright=(self.x + w - 15, self.y + h // 2))
-        screen.blit(t_surf, t_rect)
-
-        # Kırmızı barın ucuyla beraber hareket eden kalp
-        try:
-            like_surf = emoji_font.render(f"❤️ {current_likes}", True, (200, 200, 200))
-        except:
-            like_surf = font_small.render(f"LIKE {current_likes}", True, (200, 200, 200))
+        screen.blit(self.bar_surface, (self.x, self.y))
+        
+        # FONT CACHE SİSTEMİ: Sadece sayılar değiştiğinde render et
+        if self.cached_target != self.current_target:
+            self.target_surf = font_small.render(str(self.current_target), True, (200, 200, 200))
+            self.cached_target = self.current_target
             
-        # Yazı kırmızı barın en uç (sağ) noktasını takip eder
-        like_x = self.x + current_fill - 10
-        if like_x < self.x + 35: # Bar en baştayken yazının dışarı taşmasını engeller
-            like_x = self.x + 35
-            
-        like_rect = like_surf.get_rect(midright=(like_x, self.y + h // 2))
-        screen.blit(like_surf, like_rect)
-
-        # 5. BİLİNÇALTI MESAJI (Ana ekrana basıldığı için asla kesilmez)
+        if self.cached_likes != current_likes:
+            try:
+                self.like_surf = emoji_font.render(f"{current_likes} ❤️", True, (200, 200, 200))
+            except:
+                self.like_surf = font_small.render(f"LIKE {current_likes}", True, (200, 200, 200))
+            self.cached_likes = current_likes
+        
+        t_rect = self.target_surf.get_rect(midright=(self.x + w - 15, self.y + h // 2))
+        screen.blit(self.target_surf, t_rect)
+        
+        like_x = max(self.x + 35, self.x + current_fill - 10)
+        like_rect = self.like_surf.get_rect(midright=(like_x, self.y + h // 2))
+        screen.blit(self.like_surf, like_rect)
+        
+        # SABİT CTA YAZISINI SADECE İLK ÇAĞRIDA BİR KEZ RENDER ET
+        if self.cta_surf is None:
+            cta_text, cta_color = "❤️ DOUBLE TAP! 👍", (179, 5, 5)
+            try:
+                self.cta_surf = emoji_font.render(cta_text, True, cta_color)
+                self.shadow_surf = emoji_font.render(cta_text, True, (0, 0, 0))
+            except:
+                self.cta_surf = font_small.render(cta_text, True, cta_color)
+                self.shadow_surf = font_small.render(cta_text, True, (0, 0, 0))
+        
         time_ms = pygame.time.get_ticks()
         pulse_alpha = int(217 + 38 * math.sin(time_ms * 0.006)) 
-
-        cta_text = "❤️ DOUBLE TAP! 👍"
-        cta_color = (179, 5, 5)
         
-        try:
-            cta_surf = emoji_font.render(cta_text, True, cta_color)
-            shadow_surf = emoji_font.render(cta_text, True, (0, 0, 0))
-        except:
-            cta_surf = font_small.render(cta_text, True, cta_color)
-            shadow_surf = font_small.render(cta_text, True, (0, 0, 0))
-
-        cta_surf.set_alpha(pulse_alpha)
-        shadow_surf.set_alpha(pulse_alpha)
+        self.cta_surf.set_alpha(pulse_alpha)
+        self.shadow_surf.set_alpha(pulse_alpha)
         
-        # Konumu belirle: Barın (self.y) hemen 5 piksel ÜSTÜNE koyuyoruz
-        cta_rect = cta_surf.get_rect(midbottom=(self.x + w // 2, self.y - 5))
-
-        # Gölgeyi daha az ve stratejik noktalara vurarak FPS'i koruyoruz
-        offsets = [(-1, 1), (1, 1), (0, 2)]
-        for ox, oy in offsets:
-            screen.blit(shadow_surf, (cta_rect.x + ox, cta_rect.y + oy))
-
-        # Parlak yazıyı en üste bas
-        screen.blit(cta_surf, cta_rect)
+        cta_rect = self.cta_surf.get_rect(midbottom=(self.x + w // 2, self.y - 5))
+        for ox, oy in [(-1, 1), (1, 1), (0, 2)]:
+            screen.blit(self.shadow_surf, (cta_rect.x + ox, cta_rect.y + oy))
+        screen.blit(self.cta_surf, cta_rect)
 # class NextFlagsPanel:
 #     """Next flags panel independent component"""
 
@@ -447,6 +441,9 @@ class NextFlagsPanel:
         except:
             self.title_surf = pygame.font.SysFont("Arial", 16, bold=True).render("NEXT FLAGS", True, cfg["title_color_nf"])
 
+            # Bellek sızıntısını önlemek için yedek fontu bir kez belleğe al
+        self.fallback_font = pygame.font.SysFont("Arial", 12)
+
     def draw(self, screen, next_round_queue, font_small, emoji_font, flag_manager=None):
         if next_round_queue is None or flag_manager is None:
             return
@@ -524,47 +521,88 @@ class NextFlagsPanel:
 
         # 6. ÖGELERİ (KAPSAYICI KUTULARLA BİRLİKTE) YATAY DİZ
         FLAG_W, FLAG_H = 45, 30
-        for i, (name, info) in enumerate(items):
+        # for i, (name, info) in enumerate(items):
+        #     item_x = view_x_start + (i * item_w) - scroll_x
+            
+        #     # Eğer kutu ekran (kırpma alanı) dışındaysa çizimle vakit kaybetme
+        #     if item_x + item_w < view_x_start or item_x > view_x_start + view_w:
+        #         continue
+                
+        #     # A) Kapsayıcı Kutu (Item Container)
+        #     box_rect = pygame.Rect(item_x + 5, view_y_start + 5, item_w - 10, self.panel_h - self.header_h - 15)
+        #     pygame.draw.rect(screen, (50, 50, 50), box_rect, border_radius=8) # İç zemin
+        #     pygame.draw.rect(screen, (100, 100, 100), box_rect, width=1, border_radius=8) # Çerçeve
+            
+        #     # B) Bayrak Resmi (Kutunun üstünde ortalı)
+        #     flag_data = flag_manager.get_flag_by_code(info["code"], FLAG_W, FLAG_H)
+        #     if flag_data.get("image"):
+        #         flag_img = flag_data["image"]
+        #         img_rect = flag_img.get_rect(midtop=(box_rect.centerx, box_rect.top + 8))
+        #         screen.blit(flag_img, img_rect)
+                
+        #         # C) Sayı (x2) - Kutunun sağ kenarına
+        #         if info["count"] > 1:
+        #             count_str = f"x{info['count']}"
+        #             count_surf = font_small.render(count_str, True, (255, 215, 0)) # COLOR_GOLD
+        #             c_rect = count_surf.get_rect(bottomright=(box_rect.right - 5, img_rect.bottom + 5))
+                    
+        #             # Okunabilirliği artırmak için küçük siyah arka plan
+        #             c_bg = c_rect.inflate(4, 2)
+        #             pygame.draw.rect(screen, (0, 0, 0, 180), c_bg, border_radius=3)
+        #             screen.blit(count_surf, c_rect)
+
+        #     # D) Ülke Adı (Kutunun altında ortalı)
+        #     short_name = name if len(name) <= 12 else name[:10] + ".."
+        #     try:
+        #         txt_surf = font_small.render(short_name, True, (220, 220, 220))
+        #     except:
+        #         txt_surf = pygame.font.SysFont("Arial", 12).render(short_name, True, (220, 220, 220))
+            
+        #     txt_rect = txt_surf.get_rect(midbottom=(box_rect.centerx, box_rect.bottom - 5))
+        #     screen.blit(txt_surf, txt_rect)
+
+        # --- BELLEK VE RENDER OPTİMİZASYONU ---
+        start_idx = max(0, int(scroll_x // item_w))
+        visible_count = (view_w // item_w) + 2 
+        end_idx = min(total_items, start_idx + visible_count)
+
+        for i in range(start_idx, end_idx):
+            name, info = items[i]
             item_x = view_x_start + (i * item_w) - scroll_x
             
-            # Eğer kutu ekran (kırpma alanı) dışındaysa çizimle vakit kaybetme
             if item_x + item_w < view_x_start or item_x > view_x_start + view_w:
                 continue
                 
-            # A) Kapsayıcı Kutu (Item Container)
             box_rect = pygame.Rect(item_x + 5, view_y_start + 5, item_w - 10, self.panel_h - self.header_h - 15)
-            pygame.draw.rect(screen, (50, 50, 50), box_rect, border_radius=8) # İç zemin
-            pygame.draw.rect(screen, (100, 100, 100), box_rect, width=1, border_radius=8) # Çerçeve
+            pygame.draw.rect(screen, (50, 50, 50), box_rect, border_radius=8)
+            pygame.draw.rect(screen, (100, 100, 100), box_rect, width=1, border_radius=8)
             
-            # B) Bayrak Resmi (Kutunun üstünde ortalı)
             flag_data = flag_manager.get_flag_by_code(info["code"], FLAG_W, FLAG_H)
             if flag_data.get("image"):
                 flag_img = flag_data["image"]
                 img_rect = flag_img.get_rect(midtop=(box_rect.centerx, box_rect.top + 8))
                 screen.blit(flag_img, img_rect)
                 
-                # C) Sayı (x2) - Kutunun sağ kenarına
                 if info["count"] > 1:
                     count_str = f"x{info['count']}"
-                    count_surf = font_small.render(count_str, True, (255, 215, 0)) # COLOR_GOLD
+                    count_surf = font_small.render(count_str, True, (255, 215, 0))
                     c_rect = count_surf.get_rect(bottomright=(box_rect.right - 5, img_rect.bottom + 5))
-                    
-                    # Okunabilirliği artırmak için küçük siyah arka plan
                     c_bg = c_rect.inflate(4, 2)
                     pygame.draw.rect(screen, (0, 0, 0, 180), c_bg, border_radius=3)
                     screen.blit(count_surf, c_rect)
 
-            # D) Ülke Adı (Kutunun altında ortalı)
             short_name = name if len(name) <= 12 else name[:10] + ".."
             try:
                 txt_surf = font_small.render(short_name, True, (220, 220, 220))
             except:
-                txt_surf = pygame.font.SysFont("Arial", 12).render(short_name, True, (220, 220, 220))
+                # RAM sızıntısını önlemek için önceden yüklenmiş fontu kullan
+                txt_surf = self.fallback_font.render(short_name, True, (220, 220, 220))
             
             txt_rect = txt_surf.get_rect(midbottom=(box_rect.centerx, box_rect.bottom - 5))
             screen.blit(txt_surf, txt_rect)
 
         screen.set_clip(old_clip)
+        
 
 class EasterEggBanner:
     """

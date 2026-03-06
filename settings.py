@@ -9,7 +9,7 @@ FLAGS_FOLDER = "flags"
 BACKGROUND_FILE_NAME = "background.jpg"
 
 # --- MAKSİMUM VELOSİTE (Bayrakların hızı sınırı) ---
-MAX_VELOCITY = 300.0
+MAX_VELOCITY = 500.0
 
 # --- OYUN MEKANİĞİ AYARLARI ---
 SETTINGS = {
@@ -180,3 +180,16 @@ EASTER_EGG = {
 }
 
 YOUTUBE_API_KEY = "AIzaSyBx5GR7JooHT4zb0IEcoB9QV-C7lIcq290"
+
+# --- KAOS MODU (FEVER MODE) AYARLARI ---
+FEVER_MODE = {
+    "duration": 10.0,               # Kaos modunun saniye cinsinden süresi
+    "circle_color": (220, 20, 20),  # Çemberin kaos modundaki rengi (Kırmızımsı)
+    "shake_amplitude": 15,          # Çemberin yukarı-aşağı titreme şiddeti (piksel)
+    "shake_frequency": 0.05,        # Çemberin titreme hızı
+    "fever_velocity": 1500,         # Bayrakların kaos modundaki uçuş hızı
+    "normal_velocity": 500,         # Bayrakların normal uçuş hızı
+    "text_color": (255, 50, 50),    # Ekranda çıkan yazının rengi
+    "text_template": "🔥 CHAOS MODE {time} 🔥", # Ekranda çıkacak yazı
+    "text_pos": (WIDTH // 2, HEIGHT* 0.40)  # Yazının ekrandaki merkez koordinatı (X, Y)
+}

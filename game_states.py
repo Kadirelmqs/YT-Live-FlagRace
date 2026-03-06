@@ -187,6 +187,15 @@ class GamePlayState(GameState):
     """
     
     def __init__(self, game_engine):
+
+        # Beğeni hedefi kaos modu değişkenleri
+        self.fever_active = False
+        self.fever_timer = 0.0
+        self.fever_duration = FEVER_MODE["duration"]
+        self.fever_color = FEVER_MODE["circle_color"] 
+        self.normal_circle_color = COLOR_ACCENT
+        self.current_circle_color = self.normal_circle_color
+
         super().__init__(game_engine)
         self.start_time = time.time()
     
@@ -206,14 +215,11 @@ class GamePlayState(GameState):
                 self.game.game_objects.append(obj)
                 
             # 2. ALT KONTROL B: Yukarı ok tuşu mu? (Üstteki if ile TAM AYNI HİZADA olmalı)
+          # 2. ALT KONTROL B: Yukarı ok tuşu mu?
             elif event.key == pygame.K_UP:
-                # Her basışta beğeniyi 1 (veya 3) artır
-                self.game.current_likes += 1 
-                print(f"[TEST] Beğeni artırıldı: {self.game.current_likes}")
-                
-                # Bar hedefe ulaştı mı diye kontrol et
-                if self.game.like_bar.check_level_up(self.game.current_likes):
-                    print(f">>> [TEST] BEĞENİ HEDEFİNE ULAŞILDI! YENİ HEDEF: {self.game.like_bar.current_target} <<<")
+                # TEST: Her basışta beğeniyi yapay olarak artır (Gerisini update metodu halledecek)
+                self.game.current_likes += 1 # Hızlı test için 10'ar 10'ar artırsın
+
     def _process_chat_events(self):
         """
         Sohbet kuyruğundan gelen olayları işle.
@@ -248,7 +254,46 @@ class GamePlayState(GameState):
         time_played = time.time() - self.start_time
         progress = min(1.0, time_played / SETTINGS["round_time"])
         current_gap = SETTINGS["initial_gap"] + (progress * 30)
+
+
+        # --- 2A. ELEK GİBİ SALLANMA (SHAKE) MATEMATİĞİ ---
+        if self.fever_active:
+            time_ms = pygame.time.get_ticks()
+            amp = FEVER_MODE["shake_amplitude"]
+            freq = FEVER_MODE["shake_frequency"]
+            shake_y = int(amp * math.sin(time_ms * freq))
+            
+            target_center = (CIRCLE_CENTER[0], CIRCLE_CENTER[1] + shake_y)
+            max_velocity = FEVER_MODE["fever_velocity"]
+        else:
+            target_center = CIRCLE_CENTER
+            max_velocity = FEVER_MODE["normal_velocity"]
+        # ------------------------------------------------
         
+        # --- BELLEK SIZINTISI (MEMORY LEAK) KESİN ÇÖZÜMÜ ---
+        # Pymunk'ta shape'ler body'ye kalıcı yapışır. Her frame yeni shape eklemek RAM'i patlatır.
+        # Bu yüzden eski body'yi içindeki tüm shape'lerle birlikte komple yokedip yenisini yaratıyoruz.
+        old_body = self.game.circle_body
+        old_angle = old_body.angle
+        old_vel = old_body.angular_velocity
+        
+        # Eski body'yi ve ona yapışık tüm segmentleri uzaydan sil (Python onları tamamen silsin)
+        if old_body in self.game.space.bodies:
+            self.game.space.remove(old_body, *old_body.shapes)
+            
+       # Tertemiz, shape'siz yeni bir body yarat
+        new_body = pymunk.Body(body_type=pymunk.Body.KINEMATIC)
+        new_body.position = target_center  # SALLANMA EFEKTİ İÇİN BURASI DEĞİŞTİ
+        new_body.angle = old_angle
+        new_body.angular_velocity = old_vel
+        self.game.space.add(new_body)
+
+
+
+        
+        # Oyundaki circle_body referansını yenisiyle değiştir
+        self.game.circle_body = new_body
+        # ---------------------------------------------------n        
         # Çember boşluğunu güncelle
         rebuild_circle_segments(
             self.game.space, 
@@ -257,6 +302,14 @@ class GamePlayState(GameState):
             current_gap
         )
         
+        # --- 2B. BAYRAK HIZ LİMİTÖRÜ KONTROLÜ ---
+        # Uzaydaki tüm bayrakların hızını kontrol et, limiti aşanları tırpanla
+        for obj in self.game.game_objects:
+            speed = obj.body.velocity.length
+            if speed > max_velocity:
+                obj.body.velocity = obj.body.velocity.normalized() * max_velocity
+        # ------------------------------------------------
+
         # Fizik simülasyonunu step et (sub-stepping ile stabilite)
         dt_physics = 1.0 / 60.0
         sub_steps = 5
@@ -276,6 +329,13 @@ class GamePlayState(GameState):
             dist = math.sqrt(dx*dx + dy*dy)
             
             if dist > delete_limit:
+                # --- BELLEK SIZINTISI ÇÖZÜMÜ ---
+
+                shape.custom_data.clear()  # RAM'deki resim referanslarını serbest bırak
+                # # RAM sızıntısını önlerken, Kazanan ekranı için metin verilerini koru
+                # shape.custom_data.pop("image", None)
+                # shape.custom_data.pop("original", None)
+                # # --------------------------------
                 self.game.space.remove(shape.body, shape)
                 self.game.game_objects.remove(shape)
     
@@ -301,6 +361,27 @@ class GamePlayState(GameState):
         """
         # sohbetten gelen yeni bayrak olaylarını işle
         self._process_chat_events()
+
+         # --- FEVER (KAOS) MODU KONTROLÜ ---
+        if self.game.like_bar.check_level_up(self.game.current_likes):
+            self.fever_active = True
+            # Mutlak bitiş zamanını ayarla (Şu an + 10 saniye)
+            self.fever_end_time = time.time() + self.fever_duration
+
+        if self.fever_active:
+            # Geri sayım hesapla
+            self.fever_timer = self.fever_end_time - time.time()
+            if self.fever_timer <= 0:
+                self.fever_active = False
+                self.current_circle_color = self.normal_circle_color
+            else:
+                self.current_circle_color = self.fever_color
+        else:
+            self.current_circle_color = self.normal_circle_color
+            self.fever_timer = 0
+        # -----------------------------------
+
+
         self._update_physics()
         self._check_boundaries()
         self._check_winner()
@@ -312,13 +393,20 @@ class GamePlayState(GameState):
         else:
             screen.fill(COLOR_BG)
         
-        # Çember çiz
+        # # Çember çiz
+        # for shape in self.game.space.shapes:
+        #     if isinstance(shape, pymunk.Segment):
+        #         p1 = shape.a.rotated(shape.body.angle) + shape.body.position
+        #         p2 = shape.b.rotated(shape.body.angle) + shape.body.position
+        #         self.game.draw_smooth_segment(screen, p1, p2, INTERNAL_SETTINGS["wall_thickness"], COLOR_ACCENT)
+        
+        # Çember çiz (Kaos modunda kırmızı olacak)
         for shape in self.game.space.shapes:
             if isinstance(shape, pymunk.Segment):
                 p1 = shape.a.rotated(shape.body.angle) + shape.body.position
                 p2 = shape.b.rotated(shape.body.angle) + shape.body.position
-                self.game.draw_smooth_segment(screen, p1, p2, INTERNAL_SETTINGS["wall_thickness"], COLOR_ACCENT)
-        
+                self.game.draw_smooth_segment(screen, p1, p2, INTERNAL_SETTINGS["wall_thickness"], self.current_circle_color)
+
         # Bayrakları çiz
         for shape in self.game.game_objects:
             body = shape.body
@@ -338,6 +426,31 @@ class GamePlayState(GameState):
                 pygame.draw.rect(screen, (0, 0, 0, 150), bg_rect, border_radius=3)
                 screen.blit(text_surf, text_rect)
         
+
+        # --- 3. KAOS MODU GERİ SAYIM YAZISI ---
+        if self.fever_active:
+            time_left = max(0, int(self.fever_timer))
+            fever_text = FEVER_MODE["text_template"].format(time=time_left)
+            text_color = FEVER_MODE["text_color"]
+            
+            # Yazıyı titreterek çizmek için ufak bir rastgele offset
+            offset_x = random.randint(-2, 2)
+            offset_y = random.randint(-2, 2)
+            
+            try:
+                txt_surf = self.game.emoji_font.render(fever_text, True, text_color) 
+                shadow_surf = self.game.emoji_font.render(fever_text, True, (0, 0, 0))
+            except:
+                txt_surf = self.game.font_ui.render(fever_text, True, text_color) 
+                shadow_surf = self.game.font_ui.render(fever_text, True, (0, 0, 0))
+                
+            pos_x, pos_y = FEVER_MODE["text_pos"]
+            txt_rect = txt_surf.get_rect(center=(pos_x + offset_x, pos_y + offset_y))
+            screen.blit(shadow_surf, (txt_rect.x + 2, txt_rect.y + 2))
+            screen.blit(txt_surf, txt_rect)
+        # --------------------------------------
+
+
         # Alt UI (Kalan bayrak sayısı)
         ui_str = f"REST: {len(self.game.game_objects)}"
         ui_surf = self.game.font_ui.render(ui_str, True, (255, 255, 0))

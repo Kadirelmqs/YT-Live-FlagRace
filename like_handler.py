@@ -1,6 +1,7 @@
 import requests
 import time
 import threading
+import os
 
 class LikeTracker:
     """
@@ -15,6 +16,19 @@ class LikeTracker:
         self.first_sync_done = False  # İlk çekim yapıldı mı?
         self._thread = None
 
+    # def _fetch_likes(self):
+    #     url = "https://www.googleapis.com/youtube/v3/videos"
+    #     params = {'part': 'statistics', 'id': self.video_id, 'key': self.api_key}
+    #     try:
+    #         response = requests.get(url, params=params, timeout=5)
+    #         response.raise_for_status()
+    #         data = response.json()
+    #         if data.get('items'):
+    #             return int(data['items'][0]['statistics'].get('likeCount', 0))
+    #     except Exception as e:
+    #         print(f"[LIKE API ERROR] {e}")
+    #     return None
+
     def _fetch_likes(self):
         url = "https://www.googleapis.com/youtube/v3/videos"
         params = {'part': 'statistics', 'id': self.video_id, 'key': self.api_key}
@@ -24,12 +38,23 @@ class LikeTracker:
             data = response.json()
             if data.get('items'):
                 return int(data['items'][0]['statistics'].get('likeCount', 0))
+                
+        # 1. SADECE API HATALARINI (400, 403, 404 vb.) BURASI YAKALAR
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code in [400, 403]:
+                
+                os._exit(1) # Programı (tüm threadlerle birlikte) anında kapatır
+            else:
+                print(f"[LIKE API HTTP ERROR] {e}")
+                
+        # 2. İNTERNET KOPMASI GİBİ DİĞER GEÇİCİ HATALARI BURASI YAKALAR (Oyun kapanmaz)
         except Exception as e:
             print(f"[LIKE API ERROR] {e}")
+            
         return None
 
     def _track_loop(self):
-        print(f"👍 Beğeni takipçisi başlatıldı (Video ID: {self.video_id})")
+        print(f"Başlatıldı (Video ID: {self.video_id})")
         while self.is_running:
             likes = self._fetch_likes()
             if likes is not None:

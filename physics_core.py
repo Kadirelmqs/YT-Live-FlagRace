@@ -7,10 +7,6 @@ from settings import *
 # --- PHYSICS FUNCTIONS ---
 
 def rebuild_circle_segments(space, body, radius, gap_angle_deg):
-    for shape in list(space.shapes):
-        if shape.body == body and isinstance(shape, pymunk.Segment):
-            space.remove(shape)
-    
     res = 120
     gap_start = -gap_angle_deg / 2
     gap_end = gap_angle_deg / 2
