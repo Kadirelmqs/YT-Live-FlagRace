@@ -89,7 +89,7 @@ def get_next_like_target(current_target):
     elif current_target < 1000:
         return current_target + 100   # 600, 700, 800...
     else:
-        return current_target + 250   # 1250, 1500, 1750...
+        return current_target + 250   # 1250, 1500, 1750... 250 iditest için 1 yaptım
 
 # # Sonraki Bayraklar Paneli
 # NEXT_FLAGS_PANEL = {

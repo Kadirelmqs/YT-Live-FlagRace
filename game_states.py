@@ -236,6 +236,13 @@ class GamePlayState(GameState):
             h = SETTINGS["flag_size"] * 1.5
             flag_data = self.game.flag_manager.get_flag_by_code(code, w, h)
             flag_data["name"] = name
+
+            # --- MİNİMAL DÜZELTME 1: Sıfıra bölme hatasını engelle ---
+            spawn_pos = (
+                CIRCLE_CENTER[0] + random.uniform(-20, 20),
+                CIRCLE_CENTER[1] + random.uniform(-20, 20)
+            )
+
             obj = spawn_flag(
                 self.game.space,
                 CIRCLE_CENTER,
@@ -324,21 +331,25 @@ class GamePlayState(GameState):
         delete_limit = INTERNAL_SETTINGS["circle_radius"] + 50
         
         for shape in self.game.game_objects[:]:
+            # --- MİNİMAL DÜZELTME 2: Fizik motoru çöken objeyi uzaydan anında sil ---
+            if math.isnan(shape.body.position.x):
+                shape.custom_data.pop("image", None)
+                shape.custom_data.pop("original", None)
+                self.game.space.remove(shape.body, shape)
+                self.game.game_objects.remove(shape)
+                continue
+            # ------------------------------------------------------------------------
+
             dx = shape.body.position.x - CIRCLE_CENTER[0]
             dy = shape.body.position.y - CIRCLE_CENTER[1]
             dist = math.sqrt(dx*dx + dy*dy)
             
             if dist > delete_limit:
-                # --- BELLEK SIZINTISI ÇÖZÜMÜ ---
-
-                shape.custom_data.clear()  # RAM'deki resim referanslarını serbest bırak
-                # # RAM sızıntısını önlerken, Kazanan ekranı için metin verilerini koru
-                # shape.custom_data.pop("image", None)
-                # shape.custom_data.pop("original", None)
-                # # --------------------------------
+                shape.custom_data.pop("image", None)
+                shape.custom_data.pop("original", None)
                 self.game.space.remove(shape.body, shape)
                 self.game.game_objects.remove(shape)
-    
+
     def _check_winner(self):
         """
         Kazanan belirle ve ilgili state'e geç.
@@ -364,6 +375,7 @@ class GamePlayState(GameState):
 
          # --- FEVER (KAOS) MODU KONTROLÜ ---
         if self.game.like_bar.check_level_up(self.game.current_likes):
+            print(f">>> BEĞENİ HEDEFİNE ULAŞILDI! YENİ HEDEF: {self.game.like_bar.current_target} <<<")
             self.fever_active = True
             # Mutlak bitiş zamanını ayarla (Şu an + 10 saniye)
             self.fever_end_time = time.time() + self.fever_duration

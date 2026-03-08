@@ -160,6 +160,7 @@ class LeaderboardPanel:
                 pass
 
 class LikeBarPanel:
+
     """
     Dinamik ve Animasyonlu Beğeni Barı.
     Hedefe ulaşınca parlar, yeni hedef belirlendiğinde akıcı bir şekilde (Lerp) geri kayar.
@@ -268,6 +269,7 @@ class LikeBarPanel:
         for ox, oy in [(-1, 1), (1, 1), (0, 2)]:
             screen.blit(self.shadow_surf, (cta_rect.x + ox, cta_rect.y + oy))
         screen.blit(self.cta_surf, cta_rect)
+
 # class NextFlagsPanel:
 #     """Next flags panel independent component"""
 

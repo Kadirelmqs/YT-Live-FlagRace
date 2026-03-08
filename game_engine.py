@@ -391,23 +391,24 @@ class FlagBattleGame:
                 self.likes_synced = True
                 print(f"[SYNC] Başlangıç beğenisi senkronize edildi: {self.current_likes}, Hedef: {self.like_bar.current_target}")
             else:
-                # Normal oyun içi seviye atlama (Level Up) kontrolü
-                if self.like_bar.check_level_up(self.current_likes):
-                    print(f">>> BEĞENİ HEDEFİNE ULAŞILDI! YENİ HEDEF: {self.like_bar.current_target} <<<")
-                    # 1. Ekranı 1 saniye boyunca sallandır (Screen Shake)
-                    # 2. Rastgele 5 tane altın renkli dev bayrak spawn et
-                    # 3. Şakşak/Alkış ses efekti oynat
+                pass
+                # # Normal oyun içi seviye atlama (Level Up) kontrolü
+                # if self.like_bar.check_level_up(self.current_likes):
+                #     print(f">>> BEĞENİ HEDEFİNE ULAŞILDI! YENİ HEDEF: {self.like_bar.current_target} <<<")
+                #     # 1. Ekranı 1 saniye boyunca sallandır (Screen Shake)
+                #     # 2. Rastgele 5 tane altın renkli dev bayrak spawn et
+                #     # 3. Şakşak/Alkış ses efekti oynat
 
         # Her 5 saniyede bir RAM analizi için terminale çıktı ver
-        current_time = time.time()
-        if current_time - self.last_debug_time >= 5.0:
-            print(f"\n--- [DEBUG] SİSTEM DURUMU ---")
-            print(f"Chat Event Kuyruğu: {self.chat_event_queue.qsize()} öğe")
-            print(f"Next Flags Sözlüğü: {len(self.next_round_queue)} benzersiz ülke")
-            print(f"Aktif Fizik Objeleri: {len(self.game_objects)} bayrak")
-            print(f"FlagManager Cache: {len(self.flag_manager.image_cache)} yüzey")
-            print(f"-----------------------------\n")
-            self.last_debug_time = current_time
+        # current_time = time.time()
+        # if current_time - self.last_debug_time >= 25.0:
+        #     print(f"\n--- [DEBUG] SİSTEM DURUMU ---")
+        #     print(f"Chat Event Kuyruğu: {self.chat_event_queue.qsize()} öğe")
+        #     print(f"Next Flags Sözlüğü: {len(self.next_round_queue)} benzersiz ülke")
+        #     print(f"Aktif Fizik Objeleri: {len(self.game_objects)} bayrak")
+        #     print(f"FlagManager Cache: {len(self.flag_manager.image_cache)} yüzey")
+        #     print(f"-----------------------------\n")
+        #     self.last_debug_time = current_time
     def draw(self):
         """Ekrana çiz (draw'ı duruma ilet)"""
         self.current_state.draw(self.screen)
