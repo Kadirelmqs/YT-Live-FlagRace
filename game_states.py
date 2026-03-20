@@ -195,6 +195,7 @@ class GamePlayState(GameState):
         self.fever_color = FEVER_MODE["circle_color"] 
         self.normal_circle_color = COLOR_ACCENT
         self.current_circle_color = self.normal_circle_color
+        
 
         super().__init__(game_engine)
         self.start_time = time.time()
@@ -238,14 +239,24 @@ class GamePlayState(GameState):
             flag_data["name"] = name
 
             # --- MİNİMAL DÜZELTME 1: Sıfıra bölme hatasını engelle ---
+            # spawn_pos = (
+            #     CIRCLE_CENTER[0] + random.uniform(-20, 20),
+            #     CIRCLE_CENTER[1] + random.uniform(-20, 20)
+            # )
+
+            # --- YUKARIDAN YAĞMA (DROP) MODU ---
+            min_x = DROP_SETTINGS["spawn_x_margin"]
+            max_x = WIDTH - DROP_SETTINGS["spawn_x_margin"]
+            
             spawn_pos = (
-                CIRCLE_CENTER[0] + random.uniform(-20, 20),
-                CIRCLE_CENTER[1] + random.uniform(-20, 20)
+                random.uniform(min_x, max_x),
+                DROP_SETTINGS["spawn_y"] + random.uniform(-20, 20) # Y ekseninde de ufak dağınıklık
             )
+
 
             obj = spawn_flag(
                 self.game.space,
-                CIRCLE_CENTER,
+                spawn_pos,
                 SETTINGS["flag_size"],
                 specific_data=flag_data,
                 flag_manager=self.game.flag_manager,
@@ -323,32 +334,85 @@ class GamePlayState(GameState):
         for _ in range(sub_steps):
             self.game.space.step(dt_physics / sub_steps)
     
+    # def _check_boundaries(self):
+    #     """
+    #     Çember sınırlarını kontrol et.
+    #     Çemberden dışarı çıkan bayrakları sil.
+    #     """
+    #     delete_limit = INTERNAL_SETTINGS["circle_radius"] + 50
+        
+    #     for shape in self.game.game_objects[:]:
+    #         pos_x = shape.body.position.x
+    #         pos_y = shape.body.position.y
+            
+    #         # --- HAYALET (NaN/Inf) KORUMASI ---
+    #         # X veya Y ekseninden herhangi biri NaN veya Inf olmuşsa objeyi anında yok et
+    #         if math.isnan(pos_x) or math.isnan(pos_y) or math.isinf(pos_x) or math.isinf(pos_y):
+    #             shape.custom_data.pop("image", None)
+    #             shape.custom_data.pop("original", None)
+    #             self.game.space.remove(shape.body, shape)
+    #             self.game.game_objects.remove(shape)
+    #             continue
+    #         # ----------------------------------
+    #         dx = shape.body.position.x - CIRCLE_CENTER[0]
+    #         dy = shape.body.position.y - CIRCLE_CENTER[1]
+    #         dist = math.sqrt(dx*dx + dy*dy)
+            
+    #         if dist > delete_limit:
+    #             shape.custom_data.pop("image", None)
+    #             shape.custom_data.pop("original", None)
+    #             self.game.space.remove(shape.body, shape)
+    #             self.game.game_objects.remove(shape)
+
+
     def _check_boundaries(self):
         """
-        Çember sınırlarını kontrol et.
-        Çemberden dışarı çıkan bayrakları sil.
+        Modüler ekran sınırları kontrolü. (Yukarıdan sekme, alttan düşme)
         """
-        delete_limit = INTERNAL_SETTINGS["circle_radius"] + 50
-        
         for shape in self.game.game_objects[:]:
-            # --- MİNİMAL DÜZELTME 2: Fizik motoru çöken objeyi uzaydan anında sil ---
-            if math.isnan(shape.body.position.x):
+            body = shape.body
+            pos_x, pos_y = body.position
+
+            # --- HAYALET (NaN/Inf) KORUMASI ---
+            if math.isnan(pos_x) or math.isnan(pos_y) or math.isinf(pos_x) or math.isinf(pos_y):
                 shape.custom_data.pop("image", None)
                 shape.custom_data.pop("original", None)
                 self.game.space.remove(shape.body, shape)
                 self.game.game_objects.remove(shape)
                 continue
-            # ------------------------------------------------------------------------
+            # ----------------------------------
 
-            dx = shape.body.position.x - CIRCLE_CENTER[0]
-            dy = shape.body.position.y - CIRCLE_CENTER[1]
-            dist = math.sqrt(dx*dx + dy*dy)
-            
-            if dist > delete_limit:
+            # 1. ALTTAN ELENME (SADECE BURASI SİLER)
+            if pos_y > DROP_SETTINGS["death_y"]:
                 shape.custom_data.pop("image", None)
                 shape.custom_data.pop("original", None)
                 self.game.space.remove(shape.body, shape)
                 self.game.game_objects.remove(shape)
+                continue
+
+            # 2. YAN DUVARLAR VE TAVANDAN SEKME
+            new_vel_x = body.velocity.x
+            new_vel_y = body.velocity.y
+            collision_detected = False
+
+            # Üst Tavan
+            if pos_y < DROP_SETTINGS["bounce_margin_y"] and body.velocity.y < 0:
+                new_vel_y = abs(body.velocity.y)
+                collision_detected = True
+
+            # Sol Duvar
+            if pos_x < DROP_SETTINGS["bounce_margin_x"] and body.velocity.x < 0:
+                new_vel_x = abs(body.velocity.x)
+                collision_detected = True
+            
+            # Sağ Duvar
+            elif pos_x > (WIDTH - DROP_SETTINGS["bounce_margin_x"]) and body.velocity.x > 0:
+                new_vel_x = -abs(body.velocity.x)
+                collision_detected = True
+
+            # Çarpışma varsa hızı tersine çevir
+            if collision_detected:
+                body.velocity = (new_vel_x, new_vel_y)            
 
     def _check_winner(self):
         """
@@ -431,13 +495,35 @@ class GamePlayState(GameState):
                 rect = img.get_rect(center=(body.position.x, body.position.y))
                 screen.blit(img, rect)
                 
-                # Ülke adını çiz
-                text_surf = self.game.font_small.render(name, True, COLOR_TEXT)
-                text_rect = text_surf.get_rect(center=(body.position.x, body.position.y + 20))
-                bg_rect = text_rect.inflate(4, 2)
-                pygame.draw.rect(screen, (0, 0, 0, 150), bg_rect, border_radius=3)
-                screen.blit(text_surf, text_rect)
-        
+                # # Ülke adını çiz
+                # text_surf = self.game.font_small.render(name, True, COLOR_TEXT)
+                # text_rect = text_surf.get_rect(center=(body.position.x, body.position.y + 20))
+                # bg_rect = text_rect.inflate(4, 2)
+                # pygame.draw.rect(screen, (0, 0, 0, 150), bg_rect, border_radius=3)
+                # screen.blit(text_surf, text_rect)
+
+
+                # --- ÜLKE ADINI ÇİZ (OPTİMİZE EDİLMİŞ KAPSÜL) ---
+                
+                # 1. Sözlükten kısa adı al, yoksa kendi adını kullan (Performans etkisi: 0)
+                display_name = SHORT_COUNTRY_NAMES.get(name, name)
+                
+                # 2. Hala çok uzunsan kırp (Performans etkisi: 0)
+                if len(display_name) > 15:
+                    display_name = display_name[:11] + ".."
+
+                # 3. Yazıyı sadece 1 kez renderla
+                txt_surf = self.game.font_small.render(display_name, True, COLOR_TEXT)
+                txt_rect = txt_surf.get_rect(center=(body.position.x, body.position.y + 20))
+                
+                # 4. Kutu için yazının etrafında hafif boşluk bırak (inflate)
+                bg_rect = txt_rect.inflate(8, 4)
+                
+                # 5. Sadece TEK BİR dikdörtgen çiz (border_radius=5 ile yuvarlak hatlı)
+                pygame.draw.rect(screen, (0, 0, 0, 150), bg_rect, border_radius=5)
+                
+                # 6. Yazıyı kutunun üstüne bas
+                screen.blit(txt_surf, txt_rect)
 
         # --- 3. KAOS MODU GERİ SAYIM YAZISI ---
         if self.fever_active:
@@ -527,6 +613,8 @@ class WinnerState(GameState):
         # Panelleri çiz
         self.game.draw_panels(screen)
         
+        
+
         # Kazanan kutusunu çiz
         if self.game.winner_obj:
             box_w, box_h = 450, 360

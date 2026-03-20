@@ -47,7 +47,7 @@ class FlagBattleGame:
         self._initialize_fonts()
 
         # bağımsız UI panel component'leri
-        from ui_panels import LeaderboardPanel, NextFlagsPanel, EasterEggBanner,LikeBarPanel
+        from ui_panels import LeaderboardPanel, NextFlagsPanel, EasterEggBanner,LikeBarPanel, SuperChatBanner
         lb_x = LEADERBOARD_PANEL["x_position"]
         lb_y = LEADERBOARD_PANEL["y_position"]
         self.leaderboard_panel = LeaderboardPanel(lb_x, lb_y)
@@ -63,8 +63,12 @@ class FlagBattleGame:
         self.next_flags_panel = NextFlagsPanel(nf_x, nf_y)
 
         eg_x = WIDTH // 2
-        eg_y = HEIGHT // 2 + EASTER_EGG["offset_y"]
+        eg_y = EASTER_EGG["offset_y"]
         self.easter_egg = EasterEggBanner(eg_x, eg_y)
+
+        # Süper Chat Banner'ı başlat
+        sc_y = SUPER_CHAT_UI.get("y_position", 380) # Settings'ten çeker
+        self.sc_banner = SuperChatBanner(WIDTH // 2, sc_y, self)
         
         bar_x = (WIDTH - LIKE_BAR_SETTINGS["width"]) // 2
         bar_y = LIKE_BAR_SETTINGS["y_position"]
@@ -263,9 +267,11 @@ class FlagBattleGame:
         SETTINGS["flag_size"] = 15
         INTERNAL_SETTINGS["elasticity"] = 1.1
         
-        # Çember yarıçapını bayrak sayısına göre dinamik olarak ayarla
-        INTERNAL_SETTINGS["circle_radius"] = 170 + (SETTINGS["auto_spawn"] * 1.5)
-        INTERNAL_SETTINGS["circle_radius"] = min(250, INTERNAL_SETTINGS["circle_radius"])
+        # # Çember yarıçapını bayrak sayısına göre dinamik olarak ayarla
+        # INTERNAL_SETTINGS["circle_radius"] = 170 + (SETTINGS["auto_spawn"] * 1.5)
+        # INTERNAL_SETTINGS["circle_radius"] = min(240, INTERNAL_SETTINGS["circle_radius"])
+        # Çember yarıçapını bayrak sayısına göre dinamik olarak ayarla (Maksimum 240)
+        INTERNAL_SETTINGS["circle_radius"] = min(240, 170 + (SETTINGS["auto_spawn"] * 1.5))
     
     def _start_chat(self):
         """
@@ -424,7 +430,8 @@ class FlagBattleGame:
         """
         self.leaderboard_panel.draw(screen, self.leaderboard, self.font_small, self.emoji_font)
         self.next_flags_panel.draw(screen, self.next_round_queue, self.font_small, self.emoji_font, self.flag_manager)
-        self.easter_egg.draw(screen)
+        #self.easter_egg.draw(screen) #easter egg banner'ını çiz (aktif değil, istenirse açılabilir)
+        #self.sc_banner.draw(screen) #superchat banner'ını çiz (aktif değil, istenirse açılabilir)
 
         #like barı
         self.like_bar.draw(screen, self.current_likes, self.font_ui, self.emoji_font)

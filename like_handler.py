@@ -42,8 +42,8 @@ class LikeTracker:
         # 1. SADECE API HATALARINI (400, 403, 404 vb.) BURASI YAKALAR
         except requests.exceptions.HTTPError as e:
             if e.response.status_code in [400, 403]:
-                
-                os._exit(1) # Programı (tüm threadlerle birlikte) anında kapatır
+                return
+                #os._exit(1) # Programı (tüm threadlerle birlikte) anında kapatır
             else:
                 print(f"[LIKE API HTTP ERROR] {e}")
                 

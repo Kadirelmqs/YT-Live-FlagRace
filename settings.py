@@ -23,7 +23,7 @@ SETTINGS = {
 
 # --- İÇ AYARLAR (Dinamik olarak hesaplanır) ---
 INTERNAL_SETTINGS = {
-    "circle_radius": 270,
+    "circle_radius": 260, #270 idi
     "elasticity": 1.1,
     "wall_thickness": 8
 }
@@ -49,9 +49,9 @@ COLOR_EMPTY_MSG = (255, 215, 0)
 # ==========================================
 # Liderlik Paneli
 LEADERBOARD_PANEL = {
-    "width": 200,
+    "width": 210,
     "x_position": WIDTH//2 - 300,          # Sağa çektik 
-    "y_position": 90,
+    "y_position":HEIGHT*0.025 ,
     "max_visible_items": 5,
     "row_height": 20,
     "header_height": 35,
@@ -61,6 +61,7 @@ LEADERBOARD_PANEL = {
     "title_color_lb": (255, 220, 40),
     "title_offset_x": 15,
     "title_offset_y": 8,
+    "border_radius": 8
     # "horizontal_oscillation_amplitude": 6,
     # "oscillation_frequency": 0.002,
 }
@@ -69,7 +70,7 @@ LEADERBOARD_PANEL = {
 LIKE_BAR_SETTINGS = {
     "width": 400,
     "height": 25,
-    "y_position": HEIGHT*0.23,#
+    "y_position": HEIGHT*0.154,#
     "bg_color": (30, 30, 35), # Daha koyu, şık bir arka plan
     "fill_color": (235, 20, 75), # Tatlı ve canlı bir TikTok/Kalp kırmızısı
     "text_color": (255, 255, 255),
@@ -110,10 +111,10 @@ def get_next_like_target(current_target):
 
 # Sonraki Bayraklar Paneli (YATAY TASARIM)
 NEXT_FLAGS_PANEL = {
-    "width": WIDTH-20,               # Panelin toplam genişliği
+    "width": WIDTH,               # Panelin toplam genişliği
     "height": 110,              # Panelin toplam yüksekliği
-    "y_position": HEIGHT* 0.28,           # Çemberin üstünde duracağı dikey konum yukardan uzaklık
-    "x_position": (WIDTH - (WIDTH-20)) // 2,          #(Sağ-sol konumu)
+    "y_position": HEIGHT* 0.18,           # Çemberin üstünde duracağı dikey konum yukardan uzaklık
+    "x_position": 0, #(WIDTH - (WIDTH-20)) // 2,          #(Sağ-sol konumu)
     "item_width": 100,          # Her bir bayrak kutusunun genişliği
     "header_height": 30,        # Başlık kısmının yüksekliği
     # "shadow_offset": 5,         # Gölge derinliği
@@ -124,6 +125,7 @@ NEXT_FLAGS_PANEL = {
     "scroll_pause_duration_ms": 2000,
     # "vertical_oscillation_amplitude": 4, # Aşağı yukarı salınım genliği
     # "oscillation_frequency": 0.002,
+     "border_radius": 5
 }
 
 # ==========================================
@@ -167,29 +169,85 @@ ANIMATIONS = {
 }
 
 # ==========================================
+# --- SÜPER CHAT UI AYARLARI ---
+# ==========================================
+SUPER_CHAT_UI = {
+    "text": "💎 SUPER CHAT = CHAOS MODE 🌪️",
+    "color": (50, 168, 82),        # Altın Sarısı
+    "shadow_color": (0, 0, 0),     # Siyah gölge
+    "y_position": HEIGHT*0.32,             # Next Flags panelinin altındaki boşluk (Y ekseni)
+    "pulse_speed": 0.005,          # Titreşim/parlama hızı
+    "base_alpha": 200,             # Minimum saydamlık
+    "alpha_variance": 55           # Saydamlık dalgalanma payı
+}
+
+# ==========================================
 # EASTER EGG BANNER AYARLARI
 # ==========================================
 EASTER_EGG = {
     "text": "67 = BAN!",
     "font_name": "Arial Black",
-    "font_size": 15,
+    "font_size": 20,
     "color": (250, 0, 0),
     "bg_color": (10, 10, 10),
     "bg_alpha": 190,
-    "offset_y": HEIGHT * 0.65,
+    "offset_y": HEIGHT*0.297,
+    "border_radius": 3
 }
 
-YOUTUBE_API_KEY = "AIzaSyBx5GR7JooHT4zb0IEcoB9QV-C7lIcq290"
+
 
 # --- KAOS MODU (FEVER MODE) AYARLARI ---
 FEVER_MODE = {
     "duration": 10.0,               # Kaos modunun saniye cinsinden süresi
     "circle_color": (220, 20, 20),  # Çemberin kaos modundaki rengi (Kırmızımsı)
-    "shake_amplitude": 15,          # Çemberin yukarı-aşağı titreme şiddeti (piksel)
-    "shake_frequency": 0.05,        # Çemberin titreme hızı
+    "shake_amplitude": 60,          # Çemberin yukarı-aşağı titreme şiddeti (piksel) 15
+    "shake_frequency": 0.02,        # Çemberin titreme hızı0.05
     "fever_velocity": 1500,         # Bayrakların kaos modundaki uçuş hızı
     "normal_velocity": 500,         # Bayrakların normal uçuş hızı
     "text_color": (255, 50, 50),    # Ekranda çıkan yazının rengi
     "text_template": "🔥 CHAOS MODE {time} 🔥", # Ekranda çıkacak yazı
     "text_pos": (WIDTH // 2, HEIGHT* 0.40)  # Yazının ekrandaki merkez koordinatı (X, Y)
 }
+
+# --- YUKARIDAN DÜŞME (DROP) MODU AYARLARI ---
+DROP_SETTINGS = {
+    "spawn_y": HEIGHT*0.29,                # Bayrakların doğacağı Y ekseni (Ekranın üst sınırı dışında doğsun ki pat diye belirmesinler)
+    "spawn_x_margin": 150,          # Sağdan ve soldan ne kadar içeride doğacakları
+    "death_y": HEIGHT,        # Hangi Y koordinatına (dibe) düşünce silinecekleri
+    "bounce_margin_x": 0,          # Sağ/Sol duvarlardan sekme mesafesi
+    "bounce_margin_y": HEIGHT*0.29        # Üst tavandan sekme mesafesi (Çok yukarı zıplarlarsa silinmesinler diye tavanda görünmez duvar)
+}
+
+# --- UZUN ÜLKE İSİMLERİ İÇİN KISA GÖRÜNÜM HARİTASI ---
+SHORT_COUNTRY_NAMES = {
+    "United States": "USA",
+    "United Kingdom": "UK",
+    "Korea, Republic of": "South Korea",
+    "Korea, Democratic People's Republic of": "North Korea",
+    "Russian Federation": "Russia",
+    "Venezuela, Bolivarian Republic of": "Venezuela",
+    "Bolivia, Plurinational State of": "Bolivia",
+    "Iran, Islamic Republic of": "Iran",
+    "Syrian Arab Republic": "Syria",
+    "Moldova, Republic of": "Moldova",
+    "Tanzania, United Republic of": "Tanzania",
+    "Congo, The Democratic Republic of the": "DR Congo",
+    "Micronesia, Federated States of": "Micronesia",
+    "Holy See (Vatican City State)": "Vatican",
+    "Lao People's Democratic Republic": "Laos",
+    "Taiwan, Province of China": "Taiwan",
+    "Palestine, State of": "Palestine",
+    "Brunei Darussalam": "Brunei",
+    "Saint Vincent and the Grenadines": "St. Vincent",
+    "Antigua and Barbuda": "Antigua",
+    "Sao Tome and Principe": "Sao Tome",
+    "Bosnia and Herzegovina": "Bosnia",
+    "Central African Republic": "CAR",
+    "Equatorial Guinea": "Eq. Guinea",
+    "Trinidad and Tobago": "Trinidad"
+}
+
+
+# YOUTUBE_API_KEY = "AIzaSyBx5GR7JooHT4zb0IEcoB9QV-C7lIcq290"
+YOUTUBE_API_KEY = "AIzaSyCO0LBOMSHWLbV5mqEOJ22FfV3P3SUEI6Y"

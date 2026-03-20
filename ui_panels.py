@@ -39,10 +39,15 @@ class LeaderboardPanel:
         # self.shadow_surf.fill(COLOR_SHADOW)
         
         # Arka plan surface'i
-        self.bg_surf = pygame.Surface((panel_w, panel_h))
+        # self.bg_surf = pygame.Surface((panel_w, panel_h))
+        # self.bg_surf.set_alpha(cfg["panel_alpha"])
+        # self.bg_surf.fill(COLOR_PANEL_BG)
+
+        # Arka plan surface'i (Köşeleri 15 piksel yuvarlatılmış)
+        self.bg_surf = pygame.Surface((panel_w, panel_h), pygame.SRCALPHA)
+        pygame.draw.rect(self.bg_surf, COLOR_PANEL_BG, (0, 0, panel_w, panel_h), border_radius=cfg["border_radius"])
         self.bg_surf.set_alpha(cfg["panel_alpha"])
-        self.bg_surf.fill(COLOR_PANEL_BG)
-        
+
         # Başlık yazısı
         try:
             self.title_surf = pygame.font.SysFont("segoeuiemoji", 22, bold=True).render("👑 TOP WINNERS", True, cfg["title_color_lb"])
@@ -432,11 +437,17 @@ class NextFlagsPanel:
         # self.shadow_surf.set_alpha(cfg["shadow_alpha"])
         # self.shadow_surf.fill(COLOR_SHADOW)
         
-        # Arka plan surface'i
-        self.bg_surf = pygame.Surface((self.panel_w, self.panel_h))
-        self.bg_surf.set_alpha(cfg["panel_alpha"])
-        self.bg_surf.fill(COLOR_PANEL_BG)
+        # # Arka plan surface'i
+        # self.bg_surf = pygame.Surface((self.panel_w, self.panel_h))
+        # self.bg_surf.set_alpha(cfg["panel_alpha"])
+        # self.bg_surf.fill(COLOR_PANEL_BG)
         
+        # Arka plan surface'i (Köşeleri yuvarlatılmış)
+        border_radius = cfg["border_radius"] # Settings'ten al
+        self.bg_surf = pygame.Surface((self.panel_w, self.panel_h), pygame.SRCALPHA)
+        pygame.draw.rect(self.bg_surf, COLOR_PANEL_BG, (0, 0, self.panel_w, self.panel_h), border_radius=border_radius)
+        self.bg_surf.set_alpha(cfg["panel_alpha"])
+
         # Başlık yazısı
         try:
             self.title_surf = pygame.font.SysFont("segoeuiemoji", 16, bold=True).render("🚩 NEXT FLAGS", True, cfg["title_color_nf"])
@@ -632,12 +643,19 @@ class EasterEggBanner:
         # İşlem sırası: gölge -> arka plan -> yazı
         self.static_surface = pygame.Surface((bg_rect.width, bg_rect.height), pygame.SRCALPHA)
         
-        # Arka plan
-        bg_surf_temp = pygame.Surface((bg_rect.width, bg_rect.height))
-        bg_surf_temp.set_alpha(cfg["bg_alpha"])
-        bg_surf_temp.fill(cfg["bg_color"])
-        self.static_surface.blit(bg_surf_temp, (0, 0))
+        # # Arka plan
+        # bg_surf_temp = pygame.Surface((bg_rect.width, bg_rect.height))
+        # bg_surf_temp.set_alpha(cfg["bg_alpha"])
+        # bg_surf_temp.fill(cfg["bg_color"])
+        # self.static_surface.blit(bg_surf_temp, (0, 0))
         
+        # Arka plan (Yuvarlak köşeli)
+        border_radius = cfg.get("border_radius", 6) # Ayarlarda yoksa 6 piksel kullanır
+        bg_surf_temp = pygame.Surface((bg_rect.width, bg_rect.height), pygame.SRCALPHA)
+        pygame.draw.rect(bg_surf_temp, cfg["bg_color"], (0, 0, bg_rect.width, bg_rect.height), border_radius=border_radius)
+        bg_surf_temp.set_alpha(cfg["bg_alpha"])
+        self.static_surface.blit(bg_surf_temp, (0, 0))
+
         # Yazı (merkeze)
         text_offset_x = (bg_rect.width - text_rect.width) // 2
         text_offset_y = (bg_rect.height - text_rect.height) // 2
@@ -652,3 +670,39 @@ class EasterEggBanner:
         Hesaplama yok, sadece tek bir blit işlemi.
         """
         screen.blit(self.static_surface, (self.x - self.rect.width // 2, self.y - self.rect.height // 2))
+
+
+class SuperChatBanner:
+    """
+    Süper Chat bilgilendirme yazısını modüler olarak çizer.
+    Tamamen şeffaf olmadan (Blink) parlayıp söner. Performans dostudur.
+    """
+    def __init__(self, x, y, game_engine):
+        self.x = x
+        self.y = y
+        self.game = game_engine
+        
+        # Yazıyı sadece 1 kez renderla (Performans için)
+        text = SUPER_CHAT_UI["text"]
+        try:
+            self.surf = self.game.emoji_font.render(text, True, SUPER_CHAT_UI["color"])
+            self.shadow = self.game.emoji_font.render(text, True, SUPER_CHAT_UI["shadow_color"])
+        except:
+            self.surf = self.game.font_ui.render(text, True, SUPER_CHAT_UI["color"])
+            self.shadow = self.game.font_ui.render(text, True, SUPER_CHAT_UI["shadow_color"])
+            
+        self.rect = self.surf.get_rect(center=(self.x, self.y))
+
+    def draw(self, screen):
+        # 0 ile 1 arası gidip gelen bir sinüs dalgası
+        time_ms = pygame.time.get_ticks()
+        pulse = (math.sin(time_ms * SUPER_CHAT_UI["pulse_speed"]) + 1) / 2 
+        
+        # Alfa değerini 150 ile 255 arası tut (Asla tamamen yok olmaz)
+        alpha = int(150 + (105 * pulse))
+        
+        self.surf.set_alpha(alpha)
+        self.shadow.set_alpha(alpha)
+        
+        screen.blit(self.shadow, (self.rect.x + 2, self.rect.y + 2))
+        screen.blit(self.surf, self.rect)
