@@ -14,7 +14,6 @@ import pytchat
 import time
 import os
 import queue
-import queue
 from settings import *
 from flag_handler import FlagManager
 from ui_elements import TextBox, Slider, Button
@@ -181,8 +180,8 @@ class FlagBattleGame:
             # 3. Başlangıç Bayrak: 40 (Min:0 + Max:80 = 80 / 2 = 40)
             Slider(WIDTH // 2 - 200, 530, 400, 20, 0, 80, SETTINGS["auto_spawn"], "Baslangic Bayrak Sayisi"),
             
-            # 4. Gravity: 40 (Min:0 + Max:80 = 80 / 2 = 40)
-            Slider(WIDTH // 2 - 200, 600, 400, 20, 0, 80, SETTINGS["gravity"], "Gravity (Yercekimi)"),
+            # 4. Gravity: 40 (Min:0 + Max:400 = 400 / 2 = 200)
+            Slider(WIDTH // 2 - 200, 600, 400, 20, 0, 400, SETTINGS["gravity"], "Gravity (Yercekimi)"),
             
             # 5. Dönme Hızı: 1.5 (Min:0.0 + Max:3.0 = 3.0 / 2 = 1.5)
             Slider(WIDTH // 2 - 200, 670, 400, 20, 0.0, 3.0, SETTINGS["rotation_speed"], "Donme Hizi"),
@@ -265,7 +264,7 @@ class FlagBattleGame:
         SETTINGS["rotation_speed"] = self.sliders[4].val
         
         SETTINGS["flag_size"] = 15
-        INTERNAL_SETTINGS["elasticity"] = 1.1
+        # INTERNAL_SETTINGS["elasticity"] = 1
         
         # # Çember yarıçapını bayrak sayısına göre dinamik olarak ayarla
         # INTERNAL_SETTINGS["circle_radius"] = 170 + (SETTINGS["auto_spawn"] * 1.5)
@@ -291,12 +290,27 @@ class FlagBattleGame:
                     )
                     self.chat_thread.start()
 
-                   # Beğeni takipçisini başlat
+                #    # Beğeni takipçisini başlat
+                #     if YOUTUBE_API_KEY:
+                #         self.like_tracker = LikeTracker(YOUTUBE_API_KEY, video_id)
+                #         self.like_tracker.start()
+                #     else:
+                #         print("[HATA] YOUTUBE_API_KEY bulunamadı!")
+                    # Beğeni takipçisini başlat
                     if YOUTUBE_API_KEY:
-                        self.like_tracker = LikeTracker(YOUTUBE_API_KEY, video_id)
-                        self.like_tracker.start()
+                        # ZOMBİ THREAD KORUMASI: Sadece önceden çalışmıyorsa başlat
+                        if self.like_tracker is None or not self.like_tracker.is_running:
+                            self.like_tracker = LikeTracker(YOUTUBE_API_KEY, video_id)
+                            self.like_tracker.start()
+                        else:
+                            # Eğer video değiştiyse eskisini durdur yenisini başlat
+                            if self.like_tracker.video_id != video_id:
+                                self.like_tracker.stop()
+                                self.like_tracker = LikeTracker(YOUTUBE_API_KEY, video_id)
+                                self.like_tracker.start()
                     else:
                         print("[HATA] YOUTUBE_API_KEY bulunamadı!")
+
 
                     self.is_chat_running = True
                 except Exception as e:

@@ -42,7 +42,10 @@ class LikeTracker:
         # 1. SADECE API HATALARINI (400, 403, 404 vb.) BURASI YAKALAR
         except requests.exceptions.HTTPError as e:
             if e.response.status_code in [400, 403]:
-                return
+                # return 
+                os._exit(1)
+
+                
                 #os._exit(1) # Programı (tüm threadlerle birlikte) anında kapatır
             else:
                 print(f"[LIKE API HTTP ERROR] {e}")
@@ -63,7 +66,7 @@ class LikeTracker:
             
             # API kotasını doldurmamak için her sorgu arası 10 saniye bekle
             # Beklemeyi 1'er saniyelik dilimlere böldük ki kapatılmak istendiğinde anında kapansın
-            for _ in range(10):
+            for _ in range(6):
                 if not self.is_running:
                     break
                 time.sleep(1)

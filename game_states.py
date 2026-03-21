@@ -320,12 +320,32 @@ class GamePlayState(GameState):
             current_gap
         )
         
+        # # --- 2B. BAYRAK HIZ LİMİTÖRÜ KONTROLÜ ---
+        # # Uzaydaki tüm bayrakların hızını kontrol et, limiti aşanları tırpanla
+        # for obj in self.game.game_objects:
+        #     speed = obj.body.velocity.length
+        #     if speed > max_velocity:
+        #         obj.body.velocity = obj.body.velocity.normalized() * max_velocity
+        # # ------------------------------------------------
+
         # --- 2B. BAYRAK HIZ LİMİTÖRÜ KONTROLÜ ---
         # Uzaydaki tüm bayrakların hızını kontrol et, limiti aşanları tırpanla
         for obj in self.game.game_objects:
+            # 1. Çizgisel Hız (İlerleme) Limiti
             speed = obj.body.velocity.length
             if speed > max_velocity:
                 obj.body.velocity = obj.body.velocity.normalized() * max_velocity
+            
+            # 2. Dönüş Hızı (Spin) Limiti - HAYALET BUG'INI ÇÖZEN KISIM
+            # Saniyede maksimum 15 radyan dönmesine izin ver
+            if abs(obj.body.angular_velocity) > 15.0:
+                obj.body.angular_velocity = 15.0 if obj.body.angular_velocity > 0 else -15.0
+                
+            # 3. Fizik Motoru Zehirlenmesi (NaN) Koruması
+            # Dönüş açısı daha önceden bozulmuş objeleri tespit edip sıfırla
+            if math.isnan(obj.body.angle) or math.isnan(obj.body.angular_velocity):
+                obj.body.angle = 0.0
+                obj.body.angular_velocity = 0.0
         # ------------------------------------------------
 
         # Fizik simülasyonunu step et (sub-stepping ile stabilite)
@@ -365,9 +385,58 @@ class GamePlayState(GameState):
     #             self.game.game_objects.remove(shape)
 
 
+    # def _check_boundaries(self):
+    #     """
+    #     Modüler ekran sınırları kontrolü. (Yukarıdan sekme, alttan düşme)
+    #     """
+    #     for shape in self.game.game_objects[:]:
+    #         body = shape.body
+    #         pos_x, pos_y = body.position
+
+    #         # --- HAYALET (NaN/Inf) KORUMASI ---
+    #         if math.isnan(pos_x) or math.isnan(pos_y) or math.isinf(pos_x) or math.isinf(pos_y):
+    #             shape.custom_data.pop("image", None)
+    #             shape.custom_data.pop("original", None)
+    #             self.game.space.remove(shape.body, shape)
+    #             self.game.game_objects.remove(shape)
+    #             continue
+    #         # ----------------------------------
+
+    #         # 1. ALTTAN ELENME (SADECE BURASI SİLER)
+    #         if pos_y > DROP_SETTINGS["death_y"]:
+    #             shape.custom_data.pop("image", None)
+    #             shape.custom_data.pop("original", None)
+    #             self.game.space.remove(shape.body, shape)
+    #             self.game.game_objects.remove(shape)
+    #             continue
+
+    #         # 2. YAN DUVARLAR VE TAVANDAN SEKME
+    #         new_vel_x = body.velocity.x
+    #         new_vel_y = body.velocity.y
+    #         collision_detected = False
+
+    #         # Üst Tavan
+    #         if pos_y < DROP_SETTINGS["bounce_margin_y"] and body.velocity.y < 0:
+    #             new_vel_y = abs(body.velocity.y)
+    #             collision_detected = True
+
+    #         # Sol Duvar
+    #         if pos_x < DROP_SETTINGS["bounce_margin_x"] and body.velocity.x < 0:
+    #             new_vel_x = abs(body.velocity.x)
+    #             collision_detected = True
+            
+    #         # Sağ Duvar
+    #         elif pos_x > (WIDTH - DROP_SETTINGS["bounce_margin_x"]) and body.velocity.x > 0:
+    #             new_vel_x = -abs(body.velocity.x)
+    #             collision_detected = True
+
+    #         # Çarpışma varsa hızı tersine çevir
+    #         if collision_detected:
+    #             body.velocity = (new_vel_x, new_vel_y)            
+
     def _check_boundaries(self):
         """
-        Modüler ekran sınırları kontrolü. (Yukarıdan sekme, alttan düşme)
+        Modüler ekran sınırları kontrolü. (Sadece yukarıdan sekme, yanlardan ve alttan düşme)
         """
         for shape in self.game.game_objects[:]:
             body = shape.body
@@ -382,37 +451,18 @@ class GamePlayState(GameState):
                 continue
             # ----------------------------------
 
-            # 1. ALTTAN ELENME (SADECE BURASI SİLER)
-            if pos_y > DROP_SETTINGS["death_y"]:
+            # 1. ALTTAN VE YANLARDAN ELENME (SİLER)
+            # Ekranın sağına veya soluna uçan bayraklar oyunu hızlandırmak için anında silinir.
+            if pos_y > DROP_SETTINGS["death_y"] or pos_x < -100 or pos_x > WIDTH + 100:
                 shape.custom_data.pop("image", None)
                 shape.custom_data.pop("original", None)
                 self.game.space.remove(shape.body, shape)
                 self.game.game_objects.remove(shape)
                 continue
 
-            # 2. YAN DUVARLAR VE TAVANDAN SEKME
-            new_vel_x = body.velocity.x
-            new_vel_y = body.velocity.y
-            collision_detected = False
-
-            # Üst Tavan
+            # 2. SADECE TAVANDAN SEKME
             if pos_y < DROP_SETTINGS["bounce_margin_y"] and body.velocity.y < 0:
-                new_vel_y = abs(body.velocity.y)
-                collision_detected = True
-
-            # Sol Duvar
-            if pos_x < DROP_SETTINGS["bounce_margin_x"] and body.velocity.x < 0:
-                new_vel_x = abs(body.velocity.x)
-                collision_detected = True
-            
-            # Sağ Duvar
-            elif pos_x > (WIDTH - DROP_SETTINGS["bounce_margin_x"]) and body.velocity.x > 0:
-                new_vel_x = -abs(body.velocity.x)
-                collision_detected = True
-
-            # Çarpışma varsa hızı tersine çevir
-            if collision_detected:
-                body.velocity = (new_vel_x, new_vel_y)            
+                body.velocity = (body.velocity.x, abs(body.velocity.y))
 
     def _check_winner(self):
         """
