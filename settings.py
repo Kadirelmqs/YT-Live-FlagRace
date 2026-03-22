@@ -248,6 +248,18 @@ SHORT_COUNTRY_NAMES = {
     "Trinidad and Tobago": "Trinidad"
 }
 
+# ==========================================
+# SUPER CHAT & BAĞIŞ AYARLARI
+# ==========================================
+SUPER_CHAT_SETTINGS = {
+    # Kaos modu tetiklendiğinde eklenecek ekstra süre (saniye)
+    "chaos_duration_add": 10,
+    
+    # İleride eklenebilecek VIP kuralları için alt limitler
+    "vip_threshold_usd": 10.0,
+    "vip_threshold_try": 100.0
+}
+
 
 YOUTUBE_API_KEY = "AIzaSyBx5GR7JooHT4zb0IEcoB9QV-C7lIcq290" #w
 # YOUTUBE_API_KEY = "AIzaSyCO0LBOMSHWLbV5mqEOJ22FfV3P3SUEI6Y" #y7

@@ -109,6 +109,7 @@ class FlagBattleGame:
         self.chat_thread = None
         self.is_chat_running = False
         self.chat_event_queue = queue.Queue()
+        self.super_chat_queue = queue.Queue() # Süper Chat olayları için ayrı kuyruk
         
         # ==========================================
         # DURUM MAKİNESİ BAŞLANGICI
@@ -285,7 +286,7 @@ class FlagBattleGame:
                     chat = pytchat.create(video_id=video_id)
                     self.chat_thread = threading.Thread(
                         target=chat_listener_task,
-                        args=(chat, self.chat_event_queue, self.next_round_queue),
+                        args=(chat, self.chat_event_queue, self.next_round_queue, self.super_chat_queue),
                         daemon=True
                     )
                     self.chat_thread.start()
@@ -444,8 +445,8 @@ class FlagBattleGame:
         """
         self.leaderboard_panel.draw(screen, self.leaderboard, self.font_small, self.emoji_font)
         self.next_flags_panel.draw(screen, self.next_round_queue, self.font_small, self.emoji_font, self.flag_manager)
-        #self.easter_egg.draw(screen) #easter egg banner'ını çiz (aktif değil, istenirse açılabilir)
-        #self.sc_banner.draw(screen) #superchat banner'ını çiz (aktif değil, istenirse açılabilir)
+        self.easter_egg.draw(screen) #easter egg banner'ını çiz (aktif değil, istenirse açılabilir)
+        self.sc_banner.draw(screen) #superchat banner'ını çiz (aktif değil, istenirse açılabilir)
 
         #like barı
         self.like_bar.draw(screen, self.current_likes, self.font_ui, self.emoji_font)

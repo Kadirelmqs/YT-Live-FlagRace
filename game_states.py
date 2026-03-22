@@ -16,6 +16,7 @@ import math
 import queue
 from settings import *
 from physics_core import rebuild_circle_segments, spawn_flag
+from super_handler import SuperChatHandler
 
 
 class GameState(ABC):
@@ -199,6 +200,7 @@ class GamePlayState(GameState):
 
         super().__init__(game_engine)
         self.start_time = time.time()
+        self.super_chat_handler = SuperChatHandler(self) # SuperChatHandler 
     
     def handle_event(self, event):
         """Oyun sırasında olayları dinle"""
@@ -485,7 +487,8 @@ class GamePlayState(GameState):
         Sorumluluğu ayrı metodlara dağıtılmış.
         """
         # sohbetten gelen yeni bayrak olaylarını işle
-        self._process_chat_events()
+        self._process_chat_events() # Sohbet kuyruğundan gelen bayrak spawn olaylarını işle
+        self.super_chat_handler.update() # Süper Chat olaylarını işle
 
          # --- FEVER (KAOS) MODU KONTROLÜ ---
         if self.game.like_bar.check_level_up(self.game.current_likes):

@@ -82,7 +82,7 @@ def find_country_code(text):
 # SOHBET DİNLEYİCİ (CHAT LISTENER THREAD)
 # ==========================================
 
-def chat_listener_task(chat_obj, event_queue, next_round_queue):
+def chat_listener_task(chat_obj, event_queue, next_round_queue, super_chat_queue):
     """
     YouTube sohbetini dinler ve ülke adlarını iki farklı yola iletir.
     1. `event_queue` üzerinden anında oyun döngüsüne bayrak spawn etme olayları.
@@ -99,6 +99,18 @@ def chat_listener_task(chat_obj, event_queue, next_round_queue):
         while chat_obj.is_alive():
             try:
                 for c in chat_obj.get().sync_items():
+
+                    # 2. SÜPER CHAT KONTROLÜNÜ EN TEPEYE EKLE
+                    if c.type in ["superChat", "superSticker"]:
+                        super_chat_queue.put_nowait({
+                            "author": c.author.name,
+                            "message": c.message,
+                            "amount_str": c.amountString,
+                            "amount_val": c.amountValue,
+                            "currency": c.currency
+                        })
+                        continue # Bu mesaj bayrak kontrolüne girmeden pas geçilsin
+
                     msg = c.message
                     code = find_country_code(msg)
                     
