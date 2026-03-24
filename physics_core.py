@@ -26,6 +26,44 @@ def rebuild_circle_segments(space, body, radius, gap_angle_deg):
         segment.friction = 0.5 
         segment.color = (0, 255, 0, 255) 
         space.add(segment)
+    # --- HUNİ (FUNNEL) KOLLARINI EKLEME ---
+    funnel_length = 100 # Huninin dışarı uzanan kollarının uzunluğu (Piksel)
+    funnel_flare = 50   # Huninin ne kadar dışa açılacağı (Derece)
+    
+    # 1. Boşluğun başlangıç ve bitiş açılarını hesapla
+    edge1_angle_deg = 50 + gap_start
+    edge2_angle_deg = 50 + gap_end
+    
+    # 2. Çember üzerindeki kenar noktalarını bul
+    p1_edge = (radius * math.cos(math.radians(edge1_angle_deg)), radius * math.sin(math.radians(edge1_angle_deg)))
+    p2_edge = (radius * math.cos(math.radians(edge2_angle_deg)), radius * math.sin(math.radians(edge2_angle_deg)))
+    
+    # 3. Kolların dışarıya doğru uzanacağı açıları (V şekli) hesapla
+    funnel_angle_1 = edge1_angle_deg - funnel_flare
+    funnel_angle_2 = edge2_angle_deg + funnel_flare
+    
+    # 4. Kolların dış uç noktalarını hesapla
+    p1_outer = (
+        p1_edge[0] + funnel_length * math.cos(math.radians(funnel_angle_1)),
+        p1_edge[1] + funnel_length * math.sin(math.radians(funnel_angle_1))
+    )
+    
+    p2_outer = (
+        p2_edge[0] + funnel_length * math.cos(math.radians(funnel_angle_2)),
+        p2_edge[1] + funnel_length * math.sin(math.radians(funnel_angle_2))
+    )
+    
+    # 5. Fizik motoruna 1. Huni Kolunu ekle
+    funnel1 = pymunk.Segment(body, p1_edge, p1_outer, INTERNAL_SETTINGS["wall_thickness"])
+    funnel1.elasticity = INTERNAL_SETTINGS["elasticity"]
+    funnel1.friction = 0.5
+    space.add(funnel1)
+    
+    # 6. Fizik motoruna 2. Huni Kolunu ekle
+    funnel2 = pymunk.Segment(body, p2_edge, p2_outer, INTERNAL_SETTINGS["wall_thickness"])
+    funnel2.elasticity = INTERNAL_SETTINGS["elasticity"]
+    funnel2.friction = 0.5
+    space.add(funnel2)
 
 def create_circle_body(space, pos, rotation_speed):
     body = pymunk.Body(body_type=pymunk.Body.KINEMATIC)

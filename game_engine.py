@@ -87,6 +87,8 @@ class FlagBattleGame:
         self.circle_body = None
         self.game_objects = []
         
+        
+
         # ==========================================
         # OYUN DURUMU
         # ==========================================
@@ -340,6 +342,18 @@ class FlagBattleGame:
             SETTINGS["initial_gap"]
         )
     
+
+    # --- SABİT ÇAPRAZ YÖNLENDİRİCİ DUVARLAR (BUMPERS) BURAYA GELECEK ---
+        left_wall = pymunk.Segment(self.space.static_body, (0, 300), (70, 450), INTERNAL_SETTINGS["wall_thickness"])
+        left_wall.elasticity = 0.9 
+        left_wall.friction = 0.5
+        self.space.add(left_wall)
+        
+        right_wall = pymunk.Segment(self.space.static_body, (WIDTH, 300), (WIDTH - 70, 450), INTERNAL_SETTINGS["wall_thickness"])
+        right_wall.elasticity = 0.9 
+        right_wall.friction = 0.5
+        self.space.add(right_wall)
+        # -------------------------------------------------------------------
     def _spawn_initial_flags(self):
         """
         Şimdiye kadar kuyruktaki bayrakları spawn et.

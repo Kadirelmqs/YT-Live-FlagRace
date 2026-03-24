@@ -446,8 +446,8 @@ class GamePlayState(GameState):
 
             # --- HAYALET (NaN/Inf) KORUMASI ---
             if math.isnan(pos_x) or math.isnan(pos_y) or math.isinf(pos_x) or math.isinf(pos_y):
-                shape.custom_data.pop("image", None)
-                shape.custom_data.pop("original", None)
+                # shape.custom_data.pop("image", None)
+                # shape.custom_data.pop("original", None)
                 self.game.space.remove(shape.body, shape)
                 self.game.game_objects.remove(shape)
                 continue
@@ -455,9 +455,9 @@ class GamePlayState(GameState):
 
             # 1. ALTTAN VE YANLARDAN ELENME (SİLER)
             # Ekranın sağına veya soluna uçan bayraklar oyunu hızlandırmak için anında silinir.
-            if pos_y > DROP_SETTINGS["death_y"] or pos_x < -100 or pos_x > WIDTH + 100:
-                shape.custom_data.pop("image", None)
-                shape.custom_data.pop("original", None)
+            if pos_y > DROP_SETTINGS["death_y"] or pos_x < -1 or pos_x > WIDTH + 1:
+                # shape.custom_data.pop("image", None)
+                # shape.custom_data.pop("original", None)
                 self.game.space.remove(shape.body, shape)
                 self.game.game_objects.remove(shape)
                 continue
@@ -515,6 +515,30 @@ class GamePlayState(GameState):
         self._check_boundaries()
         self._check_winner()
     
+
+        # --- 🕵️ DERİN HAYALET TARAMASI (DEEP GHOST SCANNER) ---
+        if not hasattr(self, "last_ghost_scan"):
+            self.last_ghost_scan = time.time()
+            
+        if time.time() - self.last_ghost_scan > 2.0:
+            
+            # 1. Resimsiz (Görünmez) Bayrak Kontrolü
+            for obj in self.game.game_objects:
+                if not obj.custom_data.get("image"):
+                    name = obj.custom_data.get("name", "Bilinmiyor")
+                    print(f"🚨 [GÖRÜNMEZ BAYRAK]: '{name}' isimli bayrağın resmi yok! Fizikte çarpışıyor ama çizilemiyor.")
+            
+            # 2. Fizik Kaçağı (Orphan Object) Kontrolü
+            # Sadece bayrakları (çember duvarı olmayan shape'leri) sayıyoruz
+            space_shapes = [s for s in self.game.space.shapes if not isinstance(s, pymunk.Segment)]
+            
+            if len(space_shapes) > len(self.game.game_objects):
+                kacak_sayisi = len(space_shapes) - len(self.game.game_objects)
+                print(f"🚨 [FİZİK KAÇAĞI]: Çizilen {len(self.game.game_objects)} bayrak var ama uzayda {len(space_shapes)} nesne var! {kacak_sayisi} obje başıboş geziyor.")
+                
+            self.last_ghost_scan = time.time()
+        # ------------------------------------------------
+
     def draw(self, screen):
         """Oyun ekranını çiz"""
         if self.game.background_surface:
