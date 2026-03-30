@@ -222,6 +222,38 @@ class GamePlayState(GameState):
             elif event.key == pygame.K_UP:
                 # TEST: Her basışta beğeniyi yapay olarak artır (Gerisini update metodu halledecek)
                 self.game.current_likes += 1 # Hızlı test için 10'ar 10'ar artırsın
+            # --- TEST TUŞLARI BAŞLANGICI ---
+            # elif event.key == pygame.K_v:
+            #     # 'V' tuşuna basınca Başarılı VIP Bağış (Terminatör) simüle et
+            #     fake_data = {
+            #         "author": "Test_Zengini",
+            #         "message": "Turkey", # Buraya "UK" veya "🇹🇷" de yazabilirsin
+            #         "amount_val": 50.0,
+            #         "currency": "USD"
+            #     }
+            #     self.game.super_chat_queue.put_nowait(fake_data)
+
+            # elif event.key == pygame.K_c:
+            #     # 'C' tuşuna basınca Hatalı Bağış (500 Bayrak Bombası) simüle et
+            #     fake_data = {
+            #         "author": "Test_Kaos",
+            #         "message": "adamsın speed", # Sistem burada ülke bulamayacak
+            #         "amount_val": 10.0,
+            #         "currency": "EUR"
+            #     }
+            #     self.game.super_chat_queue.put_nowait(fake_data)
+
+
+            # elif event.key == pygame.K_s:
+            #     # 'S' tuşuna basınca Super Sticker (Mesajsız Bağış) simüle et
+            #     fake_data = {
+            #         "author": "Sticker_Krali",
+            #         "message": "", # Sticker'larda mesaj olmaz
+            #         "amount_val": 5.0,
+            #         "currency": "USD"
+            #     }
+            #     self.game.super_chat_queue.put_nowait(fake_data)    
+            # --- TEST TUŞLARI BİTİŞİ ---
 
     def _process_chat_events(self):
         """
@@ -437,34 +469,74 @@ class GamePlayState(GameState):
     #             body.velocity = (new_vel_x, new_vel_y)            
 
     def _check_boundaries(self):
-        """
-        Modüler ekran sınırları kontrolü. (Sadece yukarıdan sekme, yanlardan ve alttan düşme)
-        """
+        """Sınır kontrolü, Terminatör ölümsüzlüğü ve Sonsuz Döngü kırıcı."""
+        
+        # Sonsuz döngü çözümü: Oyunda hiç normal bayrak kalmadıysa VIP'ler ölebilir.
+        normal_flags_count = sum(1 for o in self.game.game_objects if not o.custom_data.get("is_terminator"))
+        
         for shape in self.game.game_objects[:]:
             body = shape.body
             pos_x, pos_y = body.position
 
-            # --- HAYALET (NaN/Inf) KORUMASI ---
             if math.isnan(pos_x) or math.isnan(pos_y) or math.isinf(pos_x) or math.isinf(pos_y):
-                # shape.custom_data.pop("image", None)
-                # shape.custom_data.pop("original", None)
                 self.game.space.remove(shape.body, shape)
                 self.game.game_objects.remove(shape)
                 continue
-            # ----------------------------------
 
-            # 1. ALTTAN VE YANLARDAN ELENME (SİLER)
-            # Ekranın sağına veya soluna uçan bayraklar oyunu hızlandırmak için anında silinir.
+            # Ölümsüzlük kuralını belirle
+            is_immortal = shape.custom_data.get("is_immortal", False)
+            if is_immortal and normal_flags_count == 0:
+                is_immortal = False # Normal bayrak bitince ölümsüzlük biter (Turun bitmesi için)
+
+            # 1. ALTTAN VE YANLARDAN ELENME (SİLER VEYA SEKTİRİR)
             if pos_y > DROP_SETTINGS["death_y"] or pos_x < -1 or pos_x > WIDTH + 1:
-                # shape.custom_data.pop("image", None)
-                # shape.custom_data.pop("original", None)
-                self.game.space.remove(shape.body, shape)
-                self.game.game_objects.remove(shape)
-                continue
+                if is_immortal:
+                    # VIP bayrağını şiddetle geri içeri sektir
+                    if pos_y > DROP_SETTINGS["death_y"]:
+                        body.velocity = (body.velocity.x, -abs(body.velocity.y) * 1.5)
+                        body.position = (pos_x, DROP_SETTINGS["death_y"] - 10)
+                    elif pos_x < -1:
+                        body.velocity = (abs(body.velocity.x) * 1.5, body.velocity.y)
+                        body.position = (10, pos_y)
+                    elif pos_x > WIDTH + 1:
+                        body.velocity = (-abs(body.velocity.x) * 1.5, body.velocity.y)
+                        body.position = (WIDTH - 10, pos_y)
+                    continue
+                else:
+                    self.game.space.remove(shape.body, shape)
+                    self.game.game_objects.remove(shape)
+                    continue
 
-            # 2. SADECE TAVANDAN SEKME
+            # 2. SADECE TAVANDAN SEKME (Herkes için geçerli)
             if pos_y < DROP_SETTINGS["bounce_margin_y"] and body.velocity.y < 0:
                 body.velocity = (body.velocity.x, abs(body.velocity.y))
+
+    def _check_terminator_collisions(self):
+        """Terminatörlere çarpan normal bayrakları siler."""
+        terminators = [obj for obj in self.game.game_objects if obj.custom_data.get("is_terminator")]
+        if not terminators:
+            return
+            
+        objects_to_remove = []
+        
+        for term in terminators:
+            for other in self.game.game_objects:
+                if other == term or other.custom_data.get("is_terminator"):
+                    continue
+                
+                dx = term.body.position.x - other.body.position.x
+                dy = term.body.position.y - other.body.position.y
+                dist_sq = dx*dx + dy*dy
+                
+                # Temas sınırı (Çapların toplamına yakın bir değer)
+                collision_dist = (SETTINGS["flag_size"] * 2.5) ** 2
+                if dist_sq < collision_dist:
+                    objects_to_remove.append(other)
+        
+        for obj in set(objects_to_remove):
+            if obj in self.game.game_objects:
+                self.game.space.remove(obj.body, obj)
+                self.game.game_objects.remove(obj)
 
     def _check_winner(self):
         """
@@ -512,6 +584,7 @@ class GamePlayState(GameState):
 
 
         self._update_physics()
+        self._check_terminator_collisions()
         self._check_boundaries()
         self._check_winner()
     

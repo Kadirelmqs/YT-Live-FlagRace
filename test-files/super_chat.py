@@ -1,7 +1,7 @@
 import pytchat
 
 # Çok izlenen ve Super Chat yağan bir yayının veya VOD'un ID'sini gir
-VIDEO_ID = "z7ixSQNJ74E" 
+VIDEO_ID = "YwwBGa4MYOQ" 
 
 chat = pytchat.create(video_id=VIDEO_ID)
 

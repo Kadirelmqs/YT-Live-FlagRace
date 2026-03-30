@@ -672,37 +672,88 @@ class EasterEggBanner:
         screen.blit(self.static_surface, (self.x - self.rect.width // 2, self.y - self.rect.height // 2))
 
 
+# class SuperChatBanner:
+#     """
+#     Süper Chat bilgilendirme yazısını modüler olarak çizer.
+#     Tamamen şeffaf olmadan (Blink) parlayıp söner. Performans dostudur.
+#     """
+#     def __init__(self, x, y, game_engine):
+#         self.x = x
+#         self.y = y
+#         self.game = game_engine
+        
+#         # Yazıyı sadece 1 kez renderla (Performans için)
+#         text = SUPER_CHAT_UI["text"]
+#         try:
+#             self.surf = self.game.emoji_font.render(text, True, SUPER_CHAT_UI["color"])
+#             self.shadow = self.game.emoji_font.render(text, True, SUPER_CHAT_UI["shadow_color"])
+#         except:
+#             self.surf = self.game.font_ui.render(text, True, SUPER_CHAT_UI["color"])
+#             self.shadow = self.game.font_ui.render(text, True, SUPER_CHAT_UI["shadow_color"])
+            
+#         self.rect = self.surf.get_rect(center=(self.x, self.y))
+
+#     def draw(self, screen):
+#         # 0 ile 1 arası gidip gelen bir sinüs dalgası
+#         time_ms = pygame.time.get_ticks()
+#         pulse = (math.sin(time_ms * SUPER_CHAT_UI["pulse_speed"]) + 1) / 2 
+        
+#         # Alfa değerini 150 ile 255 arası tut (Asla tamamen yok olmaz)
+#         alpha = int(150 + (105 * pulse))
+        
+#         self.surf.set_alpha(alpha)
+#         self.shadow.set_alpha(alpha)
+        
+#         screen.blit(self.shadow, (self.rect.x + 2, self.rect.y + 2))
+#         screen.blit(self.surf, self.rect)
 class SuperChatBanner:
     """
-    Süper Chat bilgilendirme yazısını modüler olarak çizer.
-    Tamamen şeffaf olmadan (Blink) parlayıp söner. Performans dostudur.
+    Süper Chat bilgilendirme yazısını modüler ve çoklu satır olarak çizer.
+    Tamamen şeffaf olmadan parlayıp söner.
     """
     def __init__(self, x, y, game_engine):
         self.x = x
         self.y = y
         self.game = game_engine
         
-        # Yazıyı sadece 1 kez renderla (Performans için)
-        text = SUPER_CHAT_UI["text"]
-        try:
-            self.surf = self.game.emoji_font.render(text, True, SUPER_CHAT_UI["color"])
-            self.shadow = self.game.emoji_font.render(text, True, SUPER_CHAT_UI["shadow_color"])
-        except:
-            self.surf = self.game.font_ui.render(text, True, SUPER_CHAT_UI["color"])
-            self.shadow = self.game.font_ui.render(text, True, SUPER_CHAT_UI["shadow_color"])
+        self.surfaces = []
+        self.shadows = []
+        self.rects = []
+        
+        lines = SUPER_CHAT_UI.get("text_lines", ["💎 SUPER CHAT = VIP MODE 👑"])
+        spacing = SUPER_CHAT_UI.get("line_spacing", 25)
+        
+        # Her satırı ayrı ayrı renderla ve alt alta hizala
+        current_y = self.y
+        for line in lines:
+            try:
+                surf = self.game.emoji_font.render(line, True, SUPER_CHAT_UI["color"])
+                shadow = self.game.emoji_font.render(line, True, SUPER_CHAT_UI["shadow_color"])
+            except:
+                surf = self.game.font_ui.render(line, True, SUPER_CHAT_UI["color"])
+                shadow = self.game.font_ui.render(line, True, SUPER_CHAT_UI["shadow_color"])
+                
+            rect = surf.get_rect(center=(self.x, current_y))
             
-        self.rect = self.surf.get_rect(center=(self.x, self.y))
+            self.surfaces.append(surf)
+            self.shadows.append(shadow)
+            self.rects.append(rect)
+            
+            current_y += spacing
 
     def draw(self, screen):
-        # 0 ile 1 arası gidip gelen bir sinüs dalgası
+        import math
         time_ms = pygame.time.get_ticks()
-        pulse = (math.sin(time_ms * SUPER_CHAT_UI["pulse_speed"]) + 1) / 2 
+        pulse = (math.sin(time_ms * SUPER_CHAT_UI.get("pulse_speed", 0.005)) + 1) / 2 
         
-        # Alfa değerini 150 ile 255 arası tut (Asla tamamen yok olmaz)
-        alpha = int(150 + (105 * pulse))
+        base_alpha = SUPER_CHAT_UI.get("base_alpha", 150)
+        variance = SUPER_CHAT_UI.get("alpha_variance", 105)
+        alpha = int(base_alpha + (variance * pulse))
         
-        self.surf.set_alpha(alpha)
-        self.shadow.set_alpha(alpha)
-        
-        screen.blit(self.shadow, (self.rect.x + 2, self.rect.y + 2))
-        screen.blit(self.surf, self.rect)
+        # Tüm satırları aynı saydamlık oranıyla ekrana bas
+        for i in range(len(self.surfaces)):
+            self.surfaces[i].set_alpha(alpha)
+            self.shadows[i].set_alpha(alpha)
+            
+            screen.blit(self.shadows[i], (self.rects[i].x + 2, self.rects[i].y + 2))
+            screen.blit(self.surfaces[i], self.rects[i])

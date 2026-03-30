@@ -81,17 +81,18 @@ LIKE_BAR_SETTINGS = {
 #Beğeni hedeflerini belirleyen fonksiyon
 def get_next_like_target(current_target):
     """Mevcut hedefe göre bir sonraki ulaşılabilir hedefi belirler."""
-    if current_target < 50:
-        return current_target + 10    # 10, 20, 30, 40, 50
-    elif current_target < 200:
-        return current_target + 20    # 70, 90, 110...
-    elif current_target < 500:
-        return current_target + 50    # 250, 300, 350...
-    elif current_target < 1000:
-        return current_target + 100   # 600, 700, 800...
-    else:
-        return current_target + 250   # 1250, 1500, 1750... 250 iditest için 1 yaptım
-
+    # if current_target < 50:
+    #     return current_target + 10    # 10, 20, 30, 40, 50
+    # elif current_target < 200:
+    #     return current_target + 20    # 70, 90, 110...
+    # elif current_target < 500:
+    #     return current_target + 50    # 250, 300, 350...
+    # elif current_target < 1000:
+    #     return current_target + 100   # 600, 700, 800...
+    # else:
+    #     return current_target + 250   # 1250, 1500, 1750... 250 iditest için 1 yaptım
+    if current_target < 10000:
+        return current_target + 5    # 10, 20, 30, ... 10000
 # # Sonraki Bayraklar Paneli
 # NEXT_FLAGS_PANEL = {
 #     "width": 140,#122
@@ -171,15 +172,29 @@ ANIMATIONS = {
 # ==========================================
 # --- SÜPER CHAT UI AYARLARI ---
 # ==========================================
+# SUPER_CHAT_UI = {
+#     "text": "💎 SUPER CHAT = CHAOS MODE 🌪️",
+#     "color": (50, 168, 82),        # Altın Sarısı
+#     "shadow_color": (0, 0, 0),     # Siyah gölge
+#     "y_position": HEIGHT*0.32,             # Next Flags panelinin altındaki boşluk (Y ekseni)
+#     "pulse_speed": 0.005,          # Titreşim/parlama hızı
+#     "base_alpha": 200,             # Minimum saydamlık
+#     "alpha_variance": 55           # Saydamlık dalgalanma payı
+# }
 SUPER_CHAT_UI = {
-    "text": "💎 SUPER CHAT = CHAOS MODE 🌪️",
-    "color": (50, 168, 82),        # Altın Sarısı
+    "text_lines": [
+        "SUPER CHAT + COUNTRY NAME = VIP FLAG 👑",
+        "SUPER CHAT or STICKER = RANDOM FLAGS BOMB 💥"
+    ],
+    "color": (255, 215, 0),        # Altın Sarısı
     "shadow_color": (0, 0, 0),     # Siyah gölge
-    "y_position": HEIGHT*0.32,             # Next Flags panelinin altındaki boşluk (Y ekseni)
-    "pulse_speed": 0.005,          # Titreşim/parlama hızı
-    "base_alpha": 200,             # Minimum saydamlık
-    "alpha_variance": 55           # Saydamlık dalgalanma payı
+    "y_position": HEIGHT * 0.32,   # İlk satırın Y ekseni
+    "line_spacing": 25,            # Satırlar arası piksel boşluğu
+    "pulse_speed": 0.005,          # Titreşim hızı
+    "base_alpha": 150,             # Minimum saydamlık
+    "alpha_variance": 105          # Saydamlık dalgalanma payı
 }
+
 
 # ==========================================
 # EASTER EGG BANNER AYARLARI
@@ -191,7 +206,7 @@ EASTER_EGG = {
     "color": (250, 0, 0),
     "bg_color": (10, 10, 10),
     "bg_alpha": 190,
-    "offset_y": HEIGHT*0.297,
+    "offset_y": HEIGHT*0.109, #HEIGHT*0.297
     "border_radius": 3
 }
 
@@ -214,7 +229,7 @@ FEVER_MODE = {
 DROP_SETTINGS = {
     "spawn_y": HEIGHT*0.29,                # Bayrakların doğacağı Y ekseni (Ekranın üst sınırı dışında doğsun ki pat diye belirmesinler)
     "spawn_x_margin": 150,          # Sağdan ve soldan ne kadar içeride doğacakları
-    "death_y": HEIGHT,        # Hangi Y koordinatına (dibe) düşünce silinecekleri
+    "death_y": HEIGHT-50,        # Hangi Y koordinatına (dibe) düşünce silinecekleri
     "bounce_margin_x": 0,          # Sağ/Sol duvarlardan sekme mesafesi
     "bounce_margin_y": HEIGHT*0.29        # Üst tavandan sekme mesafesi (Çok yukarı zıplarlarsa silinmesinler diye tavanda görünmez duvar)
 }
